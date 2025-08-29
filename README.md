@@ -64,3 +64,17 @@ npm run dev
 # Run the frontend
 cd client
 npm start
+```
+
+Deployment
+
+Local Development: Docker containers for backend + frontend.
+
+Production: Deployed with Red Hat OpenShift, integrated CI/CD pipeline.
+
+Blockchain: Smart contracts deployed on Ethereum testnet/mainnet.
+
+ENS: Registered subdomains pointing to project DApps.
+
+
+
