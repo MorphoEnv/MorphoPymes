@@ -5,49 +5,50 @@ Analyze access control of Solidity contract: $ARGUMENTS
 
 🔐 Access Control Analysis
 🎯 Access Patterns to Review
+
 1. Ownable Pattern
-// ✅ CORRECTO - OpenZeppelin Ownable
-import "@openzeppelin/contracts/access/Ownable.sol";
+   // ✅ CORRECTO - OpenZeppelin Ownable
+   import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MyContract is Ownable {
-    function criticalFunction() external onlyOwner {
-        // Only owner can execute
-    }
+function criticalFunction() external onlyOwner {
+// Only owner can execute
 }
-2. Role-Based Access Control (RBAC)
+} 2. Role-Based Access Control (RBAC)
 // ✅ RECOMMENDED - More flexible AccessControl
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract MyContract is AccessControl {
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-  
+bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
     modifier onlyAdmin() {
         require(hasRole(ADMIN_ROLE, msg.sender), "Not admin");
         _;
     }
-}
-3. Multi-Signature Control
+
+} 3. Multi-Signature Control
 // ✅ ALTA SEGURIDAD - Para contratos críticos
 contract MultiSig {
-    mapping(address => bool) public isOwner;
-    uint public required;
-  
+mapping(address => bool) public isOwner;
+uint public required;
+
     modifier onlyMultiSig() {
         require(isValidMultiSig(), "MultiSig required");
         _;
     }
+
 }
 🚨 Common Vulnerabilities
 ❌ tx.origin vs msg.sender
 // ❌ VULNERABLE - Phishing attacks
 function withdraw() external {
-    require(tx.origin == owner, "Not owner");
+require(tx.origin == owner, "Not owner");
 }
 
 // ✅ SEGURO
 function withdraw() external {
-    require(msg.sender == owner, "Not owner");
+require(msg.sender == owner, "Not owner");
 }
 ❌ Funciones sin Protección
 Funciones public que deberían ser internal
@@ -95,29 +96,31 @@ Emergency Controls:
 🛠️ Recommended Improvements
 Implement Timelock for Critical Changes
 contract TimelockController {
-    uint256 public constant DELAY = 2 days;
-  
+uint256 public constant DELAY = 2 days;
+
     function scheduleTransaction(
         address target,
         bytes calldata data
     ) external onlyAdmin {
         // Schedule transaction with delay
     }
+
 }
 Two-Step Ownership Transfer
 contract SafeOwnable {
-    address public owner;
-    address public pendingOwner;
-  
+address public owner;
+address public pendingOwner;
+
     function transferOwnership(address newOwner) external onlyOwner {
         pendingOwner = newOwner;
     }
-  
+
     function acceptOwnership() external {
         require(msg.sender == pendingOwner, "Not pending owner");
         owner = pendingOwner;
         pendingOwner = address(0);
     }
+
 }
 📊 Analysis Report
 Provides:

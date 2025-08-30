@@ -1,43 +1,48 @@
 description: Analyze test coverage in Hardhat project
 argument-hint: [project_directory or test_file]
-allowed-tools: Bash(npx:hardhat), Bash(npm:), Bash(find:), Bash(cat:*)
+allowed-tools: Bash(npx:hardhat), Bash(npm:), Bash(find:), Bash(cat:\*)
 Analyze test coverage in Hardhat project: $ARGUMENTS
 
 📊 Test Coverage Analysis
 🎯 Target: Minimum 90% Coverage
 Run Coverage Analysis
+
 # Install solidity-coverage if not installed
+
 !npm install --save-dev solidity-coverage
 
 # Run coverage analysis
+
 !npx hardhat coverage
 
 # Generate detailed report
-!npx hardhat coverage --testfiles "test/**/*.js"
+
+!npx hardhat coverage --testfiles "test/\*_/_.js"
 📈 Key Metrics to Analyze
+
 1. Statement Coverage
-Target: >95% for critical contracts
+   Target: >95% for critical contracts
 
 Minimum: >90% for all contracts
 
 Identify code lines not executed in tests
 
 2. Branch Coverage
-Target: >90% for conditional logic
+   Target: >90% for conditional logic
 
 Verify all if/else branches are tested
 
 Include edge cases and boundary conditions
 
 3. Function Coverage
-Target: 100% for public/external functions
+   Target: 100% for public/external functions
 
 All functions should have at least one test
 
 Include emergency and admin functions
 
 4. Line Coverage
-Target: >95% lines executed
+   Target: >95% lines executed
 
 Identify dead or unreachable code
 
@@ -49,20 +54,20 @@ For each contract, review:
 Uncovered Functions
 // Example of missing test
 describe("Emergency Functions", function() {
-  it("should pause contract in emergency", async function() {
-    await expect(contract.emergencyPause())
-      .to.emit(contract, "EmergencyPause");
-  });
+it("should pause contract in emergency", async function() {
+await expect(contract.emergencyPause())
+.to.emit(contract, "EmergencyPause");
+});
 });
 Untested Branches
 // Test for all conditional branches
 it("should handle edge cases", async function() {
-  // Test normal case
-  await contract.normalCase();
+// Test normal case
+await contract.normalCase();
 
-  // Test edge case
-  await expect(contract.edgeCase())
-    .to.be.revertedWith("Edge case error");
+// Test edge case
+await expect(contract.edgeCase())
+.to.be.revertedWith("Edge case error");
 });
 Uncovered Edge Cases
 Boundary values (0, max uint256, etc.)
@@ -76,33 +81,34 @@ External contract interactions
 🧪 Recommended Test Types
 Unit Tests (70% del coverage)
 describe("Token Transfer", function() {
-  it("should transfer tokens correctly", async function() {
-    const amount = ethers.utils.parseEther("100");
-    await token.transfer(recipient.address, amount);
-  
+it("should transfer tokens correctly", async function() {
+const amount = ethers.utils.parseEther("100");
+await token.transfer(recipient.address, amount);
+
     expect(await token.balanceOf(recipient.address))
       .to.equal(amount);
-  });
+
+});
 });
 Integration Tests (20% del coverage)
 describe("DeFi Protocol Integration", function() {
-  it("should interact with external protocols", async function() {
-    // Test complete interaction between contracts
-    await protocol.deposit(amount);
-    await protocol.stake();
-    await protocol.harvest();
-  });
+it("should interact with external protocols", async function() {
+// Test complete interaction between contracts
+await protocol.deposit(amount);
+await protocol.stake();
+await protocol.harvest();
+});
 });
 Fuzzing Tests (10% del coverage)
 // Using @foundry-rs/hardhat-forge for fuzzing
 describe("Fuzz Tests", function() {
-  it("should handle random inputs", async function() {
-    // Test with random inputs
-    for(let i = 0; i < 100; i++) {
-      const randomAmount = Math.floor(Math.random() * 1000000);
-      // Test logic here
-    }
-  });
+it("should handle random inputs", async function() {
+// Test with random inputs
+for(let i = 0; i < 100; i++) {
+const randomAmount = Math.floor(Math.random() \* 1000000);
+// Test logic here
+}
+});
 });
 📋 Coverage Checklist
 Critical Functions (100% coverage required):
@@ -144,15 +150,19 @@ Error Scenarios:
 📊 Coverage Report
 Generate HTML Report
 !npx hardhat coverage --reporter html
+
 # Open coverage/index.html for visual report
+
 CI/CD Integration
+
 # GitHub Actions example
+
 - name: Run Coverage
   run: |
-    npx hardhat coverage
-    npx codecov -f coverage/lcov.info
-🎯 Recommended Improvements
-For Coverage <90%:
+  npx hardhat coverage
+  npx codecov -f coverage/lcov.info
+  🎯 Recommended Improvements
+  For Coverage <90%:
 
 Identify critical gaps in security functions
 

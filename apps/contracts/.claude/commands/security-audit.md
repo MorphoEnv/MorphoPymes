@@ -1,6 +1,6 @@
 description: Perform comprehensive security audit on Solidity contracts
 argument-hint: [contract_file.sol or directory]
-allowed-tools: Bash(find:), Bash(grep:), Bash(cat:*)
+allowed-tools: Bash(find:), Bash(grep:), Bash(cat:\*)
 Perform comprehensive security audit on Solidity contract: $ARGUMENTS
 
 Analyze the following critical security aspects:
