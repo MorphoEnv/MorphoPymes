@@ -25,13 +25,14 @@ describe("CompanyAndCampaignManager Tests", async function () {
     const manager = await viem.deployContract("CompanyAndCampaignManager", [token.address]);
     await token.write.updateMinterContract([manager.address], { account: owner.account });
     
-    await manager.write.registerCompany(["Test Company"], { account: company.account });
+    const companyId = await manager.write.registerCompany(["Test Company"], { account: company.account });
     
-    const companyData = await manager.read.getCompany([company.account.address]);
+    const companyData = await manager.read.getCompany([1n]);
     assert.equal(companyData.companyName, "Test Company");
     assert.equal(companyData.isRegistered, true);
     
     const campaignId = await manager.write.createCampaign([
+      1n,                 // companyId
       parseEther("5"),    // goal: 5 ETH
       parseEther("0.1"),  // min: 0.1 ETH
       30n,                // 30 days
@@ -53,6 +54,7 @@ describe("CompanyAndCampaignManager Tests", async function () {
     
     await manager.write.registerCompany(["Test Company"], { account: company.account });
     await manager.write.createCampaign([
+      1n,
       parseEther("5"),
       parseEther("0.1"),
       30n,
