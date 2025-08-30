@@ -82,8 +82,11 @@ export default function Navbar() {
               <span>Connect</span>
             </button>
             
-            {/* Enhanced "Empezar" button with better animation */}
-            <button className="relative bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 text-white px-4 sm:px-5 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2 overflow-hidden group hover:shadow-xl hover:scale-105">
+            {/* Enhanced "Get Started" button with better animation */}
+            <Link
+              href="/get-started"
+              className="relative bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 text-white px-4 sm:px-5 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2 overflow-hidden group hover:shadow-xl hover:scale-105"
+            >
               {/* Animated background layers */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
@@ -96,7 +99,7 @@ export default function Navbar() {
               
               {/* Pulse effect on hover */}
               <div className="absolute inset-0 rounded-lg bg-blue-400/20 scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-            </button>
+            </Link>
 
             {/* Mobile Menu Button */}
             <button
