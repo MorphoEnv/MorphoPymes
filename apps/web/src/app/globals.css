@@ -9,19 +9,15 @@
   --morpho-light-blue: #60A5FA;
   --morpho-navy: #1E293B;
   --morpho-accent: #06B6D4;
+  --morpho-blue-50: #EFF6FF;
+  --morpho-blue-100: #DBEAFE;
+  --morpho-blue-200: #BFDBFE;
   --font-geist-sans: var(--font-geist-sans);
   --font-geist-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background: white;
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   scroll-behavior: smooth;
@@ -77,6 +73,36 @@ body {
 
 .float-animation {
   animation: float 3s ease-in-out infinite;
+}
+
+/* Grid pattern for startup background */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Enhanced background patterns */
+.bg-morpho-pattern {
+  background-image: 
+    radial-gradient(circle at 25% 25%, var(--morpho-blue-50) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, var(--morpho-light-blue) 0%, transparent 50%),
+    linear-gradient(45deg, transparent 40%, var(--morpho-blue-100) 50%, transparent 60%);
+}
+
+.bg-morpho-dots {
+  background-image: 
+    radial-gradient(circle, var(--morpho-blue) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.1;
+}
+
+.bg-morpho-gradient-mesh {
+  background: 
+    radial-gradient(ellipse 800px 600px at 120% 120%, var(--morpho-light-blue) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 800px at -20% 50%, var(--morpho-blue) 0%, transparent 60%),
+    radial-gradient(ellipse 400px 400px at 50% -50%, var(--morpho-accent) 0%, transparent 60%);
 }
 
 /* Focus styles for accessibility */

@@ -18,10 +18,10 @@ export default function Navbar() {
   }, []);
 
   const navItems = [
-    { label: 'Invierte', href: '/invest' },
-    { label: 'Financia', href: '/finance' },
-    { label: 'Ecosistema', href: '/ecosystem' },
-    { label: 'Acerca de', href: '/about' },
+    { label: 'Invest', href: '/invest' },
+    { label: 'Finance', href: '/finance' },
+    { label: 'Ecosystem', href: '/ecosystem' },
+    { label: 'About', href: '/about' },
   ];
 
   return (
@@ -79,7 +79,7 @@ export default function Navbar() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
-              <span>Conectar</span>
+              <span>Connect</span>
             </button>
             
             {/* Enhanced "Empezar" button with better animation */}
@@ -89,7 +89,7 @@ export default function Navbar() {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
               
               {/* Button content */}
-              <span className="relative z-10 transition-transform duration-300 group-hover:translate-x-1">Empezar</span>
+              <span className="relative z-10 transition-transform duration-300 group-hover:translate-x-1">Get Started</span>
               <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 relative z-10 transition-all duration-300 group-hover:translate-x-2 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5-5 5M6 12h12" />
               </svg>
@@ -139,7 +139,7 @@ export default function Navbar() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
-                  <span>Conectar Wallet</span>
+                  <span>Connect Wallet</span>
                 </button>
               </div>
             </div>
