@@ -79,6 +79,8 @@ importers:
         specifier: ^5
         version: 5.9.2
 
+  packages/shared: {}
+
 packages:
 
   '@alloc/quick-lru@5.2.0':

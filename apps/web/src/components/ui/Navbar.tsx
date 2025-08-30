@@ -8,7 +8,9 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeItem, setActiveItem] = useState('/');
-
+  // Add this state to simulate user login status
+  const [isLoggedIn, setIsLoggedIn] = useState(true); // Change to true to test Account view
+  
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -75,28 +77,41 @@ export default function Navbar() {
 
           {/* Enhanced CTA Buttons */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <button className="hidden md:flex items-center space-x-2 px-4 py-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-all duration-300 hover:bg-blue-50/60 rounded-lg border border-blue-200/50 hover:border-blue-300/70 hover:shadow-md">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              <span>Connect</span>
-            </button>
+            {!isLoggedIn && (
+              <button className="hidden md:flex items-center space-x-2 px-4 py-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-all duration-300 hover:bg-blue-50/60 rounded-lg border border-blue-200/50 hover:border-blue-300/70 hover:shadow-md">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                <span>Connect</span>
+              </button>
+            )}
             
-            {/* Enhanced "Empezar" button with better animation */}
-            <button className="relative bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 text-white px-4 sm:px-5 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2 overflow-hidden group hover:shadow-xl hover:scale-105">
+            {/* Modified button: Get Started vs Account */}
+            <Link 
+              href={isLoggedIn ? "/account" : "/get-started"}
+              className="relative bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 text-white px-4 sm:px-5 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center space-x-1.5 sm:space-x-2 overflow-hidden group hover:shadow-xl hover:scale-105"
+            >
               {/* Animated background layers */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
               
               {/* Button content */}
-              <span className="relative z-10 transition-transform duration-300 group-hover:translate-x-1">Get Started</span>
-              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 relative z-10 transition-all duration-300 group-hover:translate-x-2 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5-5 5M6 12h12" />
-              </svg>
+              <span className="relative z-10 transition-transform duration-300 group-hover:translate-x-1">
+                {isLoggedIn ? "Account" : "Get Started"}
+              </span>
+              {isLoggedIn ? (
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 relative z-10 transition-all duration-300 group-hover:translate-x-2 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 relative z-10 transition-all duration-300 group-hover:translate-x-2 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5-5 5M6 12h12" />
+                </svg>
+              )}
               
               {/* Pulse effect on hover */}
               <div className="absolute inset-0 rounded-lg bg-blue-400/20 scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-            </button>
+            </Link>
 
             {/* Mobile Menu Button */}
             <button
@@ -135,12 +150,14 @@ export default function Navbar() {
                 </Link>
               ))}
               <div className="pt-3 border-t border-blue-200/30 mt-3">
-                <button className="w-full flex items-center justify-center space-x-2 px-3 py-2.5 text-blue-600 hover:text-blue-700 font-medium transition-colors duration-300 border border-blue-200/30 rounded-lg hover:bg-blue-50/60">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                  <span>Connect Wallet</span>
-                </button>
+                {!isLoggedIn && (
+                  <button className="w-full flex items-center justify-center space-x-2 px-3 py-2.5 text-blue-600 hover:text-blue-700 font-medium transition-colors duration-300 border border-blue-200/30 rounded-lg hover:bg-blue-50/60">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    <span>Connect Wallet</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
