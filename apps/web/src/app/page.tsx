@@ -1,10 +1,11 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative px-6 pt-24 pb-20 lg:pt-32 lg:pb-24 bg-gradient-to-br from-blue-50 via-white to-blue-100/60 overflow-hidden">
+      <section className="relative px-6 pt-32 pb-20 lg:pt-40 lg:pb-24 bg-gradient-to-br from-blue-50 via-white to-blue-100/60 overflow-hidden">
         {/* Enhanced Hero Background */}
         <div className="absolute inset-0 bg-morpho-pattern opacity-30"></div>
         <div className="absolute inset-0 bg-morpho-dots"></div>
@@ -33,9 +34,9 @@ export default function Home() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 lg:justify-start justify-center">
-                <button className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold text-base hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 uppercase tracking-wide">
+                <Link href="/login" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold text-base hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 uppercase tracking-wide text-center">
                   START INVESTING
-                </button>
+                </Link>
                 <button className="border-2 border-gray-300 text-gray-700 px-8 py-3 rounded-xl font-semibold text-base hover:bg-gray-50 hover:border-gray-400 transition-all duration-300">
                   How it works?
                 </button>
@@ -319,12 +320,12 @@ export default function Home() {
                   Join thousands of investors and entrepreneurs already using MorphoPymes to democratize finance.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <button className="bg-white text-blue-600 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105">
+                  <Link href="/login" className="bg-white text-blue-600 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 text-center">
                     Start Investing Now
-                  </button>
-                  <button className="border-2 border-white/50 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/10 transition-all duration-300">
+                  </Link>
+                  <Link href="/login" className="border-2 border-white/50 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/10 transition-all duration-300 text-center">
                     Apply for Funding
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>
