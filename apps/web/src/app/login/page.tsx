@@ -1,0 +1,211 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useActiveAccount, useActiveWallet, useConnect, useDisconnect } from 'thirdweb/react';
+import { createWallet } from 'thirdweb/wallets';
+import { client } from '@/components/providers/ThirdWebProvider';
+
+export default function Login() {
+  const account = useActiveAccount();
+  const activeWallet = useActiveWallet();
+  const { connect, isConnecting } = useConnect();
+  const { disconnect } = useDisconnect();
+  
+  const [connectingMethod, setConnectingMethod] = useState<string>('');
+
+  // Conexión con ThirdWeb (para usuarios sin wallet) - Email wallet
+  const handleConnectThirdWeb = async () => {
+    setConnectingMethod('thirdweb');
+    try {
+      // Usar WalletConnect como alternativa más simple
+      const wallet = createWallet('walletConnect');
+      await connect(async () => {
+        await wallet.connect({ client });
+        return wallet;
+      });
+      console.log('WalletConnect wallet connected');
+    } catch (error) {
+      console.error('Error connecting WalletConnect:', error);
+      alert('Error al conectar wallet. Por favor intenta de nuevo o usa MetaMask.');
+    } finally {
+      setConnectingMethod('');
+    }
+  };
+
+  // Conexión con ThirdWeb Email Wallet
+  const handleConnectThirdWebEmail = async () => {
+    setConnectingMethod('thirdweb-email');
+    try {
+      // Crear wallet embebido de ThirdWeb con Google
+      const wallet = createWallet('inApp');
+      await connect(async () => {
+        await wallet.connect({
+          client,
+          strategy: 'google'
+        });
+        return wallet;
+      });
+      console.log('ThirdWeb Google wallet connected successfully');
+    } catch (error) {
+      console.error('Error creating ThirdWeb Google wallet:', error);
+      alert('Error al crear wallet con Google. Por favor intenta de nuevo.');
+    } finally {
+      setConnectingMethod('');
+    }
+  };
+
+  // Si ya está conectado con ThirdWeb, mostrar información
+  if (account) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100/60 flex items-center justify-center px-6 py-12">
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-blue-100 max-w-md w-full">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Wallet Connected!</h2>
+            <p className="text-gray-600 mb-6">
+              Address: {account.address.slice(0, 6)}...{account.address.slice(-4)}
+            </p>
+            <div className="space-y-3">
+              <Link 
+                href="/dashboard"
+                className="block w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-300"
+              >
+                Go to Dashboard
+              </Link>
+              <button
+                onClick={() => activeWallet && disconnect(activeWallet)}
+                className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-300"
+              >
+                Disconnect
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100/60 flex items-center justify-center px-6 py-12">
+      <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]"></div>
+      
+      <div className="w-full max-w-md relative z-10">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center justify-center mb-6">
+            <Image
+              src="/Logo.png"
+              alt="MorphoPymes"
+              width={60}
+              height={60}
+              className="object-contain"
+            />
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Connect Your Wallet</h1>
+          <p className="text-gray-600">Choose your preferred wallet to get started</p>
+        </div>
+
+        {/* Login Form */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-blue-100">
+          {/* Wallet Connection Options */}
+          <div className="space-y-4">
+            {/* ThirdWeb Connection */}
+            <button
+              onClick={handleConnectThirdWeb}
+              disabled={connectingMethod === 'thirdweb'}
+              className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-blue-200 rounded-xl transition-all duration-300 ${
+                connectingMethod === 'thirdweb'
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-md'
+              }`}
+            >
+              {connectingMethod === 'thirdweb' ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                  <span className="font-medium text-gray-700">Connecting...</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
+                    <div className="w-3 h-3 bg-white rounded-sm"></div>
+                  </div>
+                  <span className="font-medium text-gray-700">Connect Other Wallet</span>
+                  <div className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">WalletConnect</div>
+                </>
+              )}
+            </button>
+
+            {/* ThirdWeb Email Wallet */}
+            <button
+              onClick={handleConnectThirdWebEmail}
+              disabled={connectingMethod === 'thirdweb-email'}
+              className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-purple-200 rounded-xl transition-all duration-300 ${
+                connectingMethod === 'thirdweb-email'
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-md'
+              }`}
+            >
+              {connectingMethod === 'thirdweb-email' ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                  <span className="font-medium text-gray-700">Creating...</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium text-gray-700">Connect with Google</span>
+                  <div className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">ThirdWeb</div>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Contact Us Link */}
+          <div className="mt-8 text-center">
+            <p className="text-gray-600">
+              Need help getting started?{' '}
+              <a 
+                href="https://x.com/MorphoEnv" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 font-semibold inline-flex items-center space-x-1"
+              >
+                <span>Contact us on X</span>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </a>
+            </p>
+          </div>
+        </div>
+
+        {/* Security Badge */}
+        <div className="mt-6 flex items-center justify-center space-x-2 text-sm text-gray-500">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span>Your keys, your crypto, your control</span>
+        </div>
+      </div>
+
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -left-32 w-64 h-64 bg-blue-400/8 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-blue-500/6 rounded-full blur-3xl"></div>
+      </div>
+    </div>
+  );
+}
