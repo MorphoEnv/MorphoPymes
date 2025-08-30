@@ -24,11 +24,11 @@ contract MoPy is ERC20, Ownable {
     event MinterContractUpdated(address indexed oldMinter, address indexed newMinter);
 
     /**
-     * @dev Modifier to restrict function access to the authorized minter contract only
-     * @notice Only the CompanyAndCampaignManager contract can mint or burn tokens
+     * @dev Modifier to restrict function access to owner or authorized minter
+     * @notice Owner or the authorized minter contract can mint or burn tokens
      */
     modifier onlyMinter() {
-        require(msg.sender == minterContract, "MoPy: caller is not the authorized minter");
+        require(msg.sender == minterContract || msg.sender == owner(), "MoPy: caller is not authorized");
         _;
     }
 

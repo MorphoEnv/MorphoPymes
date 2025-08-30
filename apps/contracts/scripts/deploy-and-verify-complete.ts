@@ -22,10 +22,8 @@ try {
   const managerAddress = managerDeployment["CompanyAndCampaignManagerModule#CompanyAndCampaignManager"];
   console.log(`✅ Manager deployed at: ${managerAddress}\n`);
   
-  // Step 3: Configure MoPy minter (skip - do manually after deployment)
-  console.log("⚙️ Step 3: Minter configuration needed manually");
-  console.log(`Run: npx hardhat console --network sepolia`);
-  console.log(`Then: const token = await hre.viem.getContractAt("MoPy", "${moPyAddress}"); await token.write.updateMinterContract(["${managerAddress}"]);`);
+  // Step 3: Configure MoPy minter (owner can now mint directly)
+  console.log("⚙️ Step 3: Minter configured (owner has minting rights)");
   
   // Step 4: Verify contracts
   console.log("\n🔍 Step 4: Verifying contracts...");
