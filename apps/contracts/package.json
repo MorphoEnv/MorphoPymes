@@ -1,0 +1,31 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "clean": "npx hardhat clean",
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "test:sol": "npx hardhat test solidity",
+    "deploy:token:local": "npx hardhat ignition deploy ignition/modules/MoPy.ts",
+    "deploy:token:sepolia": "npx hardhat ignition deploy ignition/modules/MoPy.ts --network sepolia",
+    "deploy:manager:local": "npx hardhat ignition deploy ignition/modules/CompleteEcosystem.ts",
+    "deploy:manager:sepolia": "npx hardhat ignition deploy ignition/modules/CompleteEcosystem.ts --network sepolia",
+    "verify:sepolia": "npx hardhat ignition verify chain-84532 --network sepolia",
+    "deploy:complete": "npm run deploy:manager:sepolia && npm run verify:sepolia",
+    "node": "npx hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^3.0.1",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
+    "@typesecosystem/node": "^22.18.0",
+    "dotenv": "^17.2.1",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "hardhat": "^3.0.3",
+    "typescript": "~5.8.0",
+    "viem": "^2.36.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
+  }
+}
