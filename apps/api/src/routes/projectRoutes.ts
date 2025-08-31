@@ -21,6 +21,9 @@ router.get('/:id', ProjectController.getById);
 // Invest in a project (record investor wallet and amount)
 router.post('/:id/invest', ProjectController.invest);
 
+// Return funds (mark investments as returned, reset funding)
+router.post('/:id/return', ProjectController.returnFunds);
+
 // Create project
 router.post('/', ProjectController.create);
 

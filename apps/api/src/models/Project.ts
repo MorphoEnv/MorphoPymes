@@ -38,8 +38,11 @@ export interface IProject extends Document {
   sponsored: boolean;
   contractAddress?: string;
   views: number;
-  investments?: { walletAddress: string; amount: number; roiPercent?: number; createdAt?: Date }[];
+  investments?: { walletAddress: string; amount: number; roiPercent?: number; createdAt?: Date; returned?: boolean; returnedAt?: Date; returnedAmount?: number }[];
   lastUpdate: Date;
+  statusMessage?: string;
+  refunded?: boolean;
+  refundedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -168,8 +171,23 @@ const ProjectSchema: Schema = new Schema({
     walletAddress: { type: String, trim: true, lowercase: true },
     amount: { type: Number, default: 0, min: 0 },
     roiPercent: { type: Number },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    returned: { type: Boolean, default: false },
+    returnedAt: { type: Date },
+    returnedAmount: { type: Number, default: 0 }
   }],
+  refunded: {
+    type: Boolean,
+    default: false
+  },
+  refundedAt: {
+    type: Date
+  },
+  statusMessage: {
+    type: String,
+    trim: true,
+    required: false
+  },
   status: {
     type: String,
     required: true,

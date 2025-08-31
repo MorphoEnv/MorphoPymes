@@ -57,6 +57,8 @@ export default function ProjectDetail() {
     return { totalValue: last, totalGain, percentageGain };
   }, [chartData]);
   const { user } = useAuth();
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returning, setReturning] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -400,6 +402,36 @@ export default function ProjectDetail() {
                       className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
                   </div>
+                  {/* Entrepreneur-only: Return funds button */}
+                  {(() => {
+                    try {
+                      const isOwner = Boolean(
+                        user && (
+                          (typeof project?.entrepreneur === 'string' && user._id === project.entrepreneur) ||
+                          (project?.entrepreneur && user._id === project?.entrepreneur?._id) ||
+                          (user.walletAddress && project?.entrepreneur?.walletAddress && user.walletAddress?.toLowerCase() === project.entrepreneur.walletAddress?.toLowerCase())
+                        )
+                      );
+
+                      // show button only to project owner and only if there is funding to refund and not already refunded
+                      if (isOwner && (project?.funding?.raised > 0) && !project?.refunded) {
+                        return (
+                          <div className="mt-4">
+                            <button
+                              onClick={() => setShowReturnModal(true)}
+                              className="w-full bg-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
+                              disabled={returning}
+                            >
+                              {returning ? 'Returning funds...' : 'Return Funds to Investors'}
+                            </button>
+                          </div>
+                        );
+                      }
+                    } catch (err) {
+                      // ignore and don't render
+                    }
+                    return null;
+                  })()}
 
                   <button
                     onClick={() => setShowInvestModal(true)}
@@ -510,6 +542,51 @@ export default function ProjectDetail() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return Funds Modal (entrepreneur) */}
+      {showReturnModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Return Funds to Investors</h3>
+            <p className="text-sm text-gray-600 mb-4">This will mark all investor contributions as returned and reset the project's funding totals. This action is irreversible in the database. Please confirm you have processed on-chain refunds externally, if applicable.</p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowReturnModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={returning}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setReturning(true);
+                    const res = await apiService.returnProjectFunds(project._id || project.id);
+                    if (res && res.success && res.data) {
+                      // refresh project from API
+                      const refreshed = await apiService.getProjectById(project._id || project.id);
+                      if (refreshed && refreshed.success && refreshed.data?.project) {
+                        setProject(refreshed.data.project);
+                      }
+                      setShowReturnModal(false);
+                    } else {
+                      alert(res?.message || 'Failed to mark funds as returned');
+                    }
+                  } catch (err) {
+                    console.error('Error returning funds', err);
+                    alert('Error returning funds');
+                  } finally {
+                    setReturning(false);
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Confirm Return
+              </button>
             </div>
           </div>
         </div>

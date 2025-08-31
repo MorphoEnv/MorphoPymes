@@ -192,14 +192,19 @@ export default function PortfolioChart({
           />
           
           {currentData.map((point, index) => {
-            const x = 20 + (index / (currentData.length - 1)) * 560;
-            const y = 230 - ((point.value - minValue) / valueRange) * 190;
-            
+            const denom = Math.max(1, currentData.length - 1);
+            const rawX = 20 + (index / denom) * 560;
+            const safeValue = (typeof point.value === 'number' && !isNaN(point.value)) ? point.value : minValue;
+            const rawY = 230 - ((safeValue - minValue) / valueRange) * 190;
+
+            const cx = Number.isFinite(rawX) ? rawX : 0;
+            const cy = Number.isFinite(rawY) ? rawY : 0;
+
             return (
               <circle
                 key={index}
-                cx={x}
-                cy={y}
+                cx={cx}
+                cy={cy}
                 r="3"
                 fill="#3b82f6"
                 stroke="white"

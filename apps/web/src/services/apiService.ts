@@ -240,6 +240,10 @@ class ApiService {
     return this.makeRequest<{ projects: any[] }>(`/api/projects/investments?${params.toString()}`);
   }
 
+  async returnProjectFunds(projectId: string) {
+    return this.makeRequest<{ project: any }>(`/api/projects/${projectId}/return`, { method: 'POST' });
+  }
+
   async investProject(projectId: string, walletAddress: string, amount: number) {
     return this.makeRequest<{ investment: any; project: any }>(`/api/projects/${projectId}/invest`, {
       method: 'POST',

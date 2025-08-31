@@ -78,6 +78,17 @@ export const EmailService = {
     console.log('✉️ Welcome email sent:', info.messageId);
     return info;
   }
+  ,
+  sendSimpleEmail: async (to: string, subject: string, html: string) => {
+    const info = await transporter.sendMail({
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      to,
+      subject,
+      html,
+    });
+    console.log('✉️ Notification email sent:', info.messageId);
+    return info;
+  }
 };
 
 export default transporter;

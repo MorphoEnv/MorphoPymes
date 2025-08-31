@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { ProjectService } from '../services/projectService';
 import { Project } from '../models/Project';
+import { EmailService } from '../services/emailService';
+import { UserService } from '../services/userService';
 
 export class ProjectController {
   static async listByEntrepreneur(req: Request, res: Response) {
@@ -144,10 +146,80 @@ export class ProjectController {
       const lastInv = project.investments[project.investments.length - 1] as any;
       const responseInv = { walletAddress: lastInv.walletAddress, amount: lastInv.amount, roiPercent: roiPercent ?? null, createdAt: lastInv.createdAt };
 
+      // Notify project owner by email if configured
+      try {
+        // try to load entrepreneur user record
+        const entUser = await UserService.getUserByWallet(String((project as any).entrepreneur?.walletAddress || ''));
+        // fallback: if entrepreneur is populated via virtual use entrepreneur_details
+        const entDetails = (project as any).entrepreneur_details || (project as any).entrepreneur || {};
+        const ownerEmail = (entUser && entUser.email) || entDetails?.email;
+        const ownerName = (entUser && `${entUser.firstName} ${entUser.lastName}`) || entDetails?.name || 'Entrepreneur';
+        if (ownerEmail) {
+          await EmailService.sendSimpleEmail(
+            ownerEmail,
+            `New investment received for ${project.title}`,
+            `<p>Hello ${ownerName},</p><p>Your project <strong>${project.title}</strong> just received a new investment of <strong>$${Number(amount)}</strong> from wallet <code>${responseInv.walletAddress}</code>.</p><p>Current raised: <strong>$${project.funding.raised}</strong>.</p>`
+          );
+        }
+      } catch (err) {
+        console.warn('Failed sending owner notification email on invest:', err);
+      }
+
       return res.json({ success: true, data: { project, investment: responseInv } });
     } catch (error) {
       console.error('Error recording investment:', error);
       return res.status(500).json({ success: false, message: 'Error recording investment' });
+    }
+  }
+
+  static async returnFunds(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const project = await Project.findById(id);
+      if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+      // Mark all investments as returned and record returned amounts/time
+      project.investments = (project.investments || []).map((inv: any) => {
+        if (inv.returned) return inv;
+        const returnedAmount = Number(inv.amount) || 0;
+        return { ...inv, returned: true, returnedAt: new Date(), returnedAmount } as any;
+      });
+
+      // Update funding aggregates to 0 and mark refunded
+      project.funding.raised = 0;
+      project.funding.investors = 0;
+      project.funding.percentage = 0;
+      project.refunded = true;
+      project.refundedAt = new Date();
+      project.statusMessage = 'terminamo';
+
+      await project.save();
+
+      // Send notification emails to all investors (resolve emails from wallet if registered)
+      try {
+        const uniqueWallets = Array.from(new Set((project.investments || []).map((i: any) => (i.walletAddress || '').toLowerCase())));
+        for (const w of uniqueWallets) {
+          try {
+            const user = await UserService.getUserByWallet(w);
+            if (user && user.email && user.emailNotifications) {
+              await EmailService.sendSimpleEmail(
+                user.email,
+                `Your investment in ${project.title} has been returned`,
+                `<p>Hello ${user.firstName || ''},</p><p>The investment you made in <strong>${project.title}</strong> has been marked as returned by the entrepreneur. The project status reads: <strong>terminamo</strong>.</p><p>If you have not yet received an on-chain refund, please contact the project owner.</p>`
+              );
+            }
+          } catch (innerErr) {
+            console.warn('Failed sending refund email to wallet', w, innerErr);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed sending investor refund emails:', err);
+      }
+
+      return res.json({ success: true, data: { project } });
+    } catch (error) {
+      console.error('Error returning funds:', error);
+      return res.status(500).json({ success: false, message: 'Error returning funds' });
     }
   }
 }
