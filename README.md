@@ -6,9 +6,9 @@ We connect local entrepreneurs with individual investors through blockchain and 
 ---
 ## 🔗 Contract Links:
 ### MoPy:
-`https://base-sepolia.blockscout.com/address/0x53F3E45e49F5aE1f49BD35fF3DE767dCC905900C#code`
+`https://base-sepolia.blockscout.com/address/0xf3DD33ddb68A08b5c520D8cc3BB0A72f08431551#code`
 ### Escrow manager: 
-`https://base-sepolia.blockscout.com/address/0x0260D12C49b73782B69733045662DCCaB981637f#code`
+`https://base-sepolia.blockscout.com/address/0xC72dA51bBC839C460E11fA16F93AE6E3Efa0d63d#code`
 
 ---
 ## Tech Stack
