@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -552,7 +553,7 @@ export default function ProjectDetail() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Return Funds to Investors</h3>
-            <p className="text-sm text-gray-600 mb-4">This will mark all investor contributions as returned and reset the project's funding totals. This action is irreversible in the database. Please confirm you have processed on-chain refunds externally, if applicable.</p>
+            <p className="text-sm text-gray-600 mb-4">This will mark all investor contributions as returned and reset the funding totals for the project. This action is irreversible in the database. Please confirm you have processed on-chain refunds externally, if applicable.</p>
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowReturnModal(false)}

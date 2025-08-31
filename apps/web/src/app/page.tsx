@@ -155,14 +155,14 @@ export default function Home() {
                     <h3 className="text-2xl font-bold text-gray-900 mb-4">Discover & Invest</h3>
                     <p className="text-gray-600 mb-8 leading-relaxed">
                       Browse verified SMEs with detailed business plans, financial projections, and ENS-verified identities. 
-                      Start investing from just $10 with complete transparency.
+                      Start investing from just 0.01 ETH with complete transparency.
                     </p>
                     
                     {/* Mini Dashboard Preview */}
                     <div className="bg-gradient-to-r from-blue-50 to-blue-100/60 rounded-2xl p-6 mb-6 border border-blue-200/30">
                       <div className="flex items-center justify-between mb-4">
                         <div className="text-sm text-gray-600">Investment Range</div>
-                        <div className="text-lg font-bold text-blue-600">$10 - $50K</div>
+                        <div className="text-lg font-bold text-blue-600">0.01 - 10 ETH</div>
                       </div>
                       <div className="flex items-center justify-between mb-4">
                         <div className="text-sm text-gray-600">Expected ROI</div>
@@ -231,7 +231,7 @@ export default function Home() {
                       </div>
                       <div className="mt-4 pt-4 border-t border-blue-200/50">
                         <div className="text-center">
-                          <div className="text-lg font-bold text-blue-600 mb-1">$25K</div>
+                          <div className="text-lg font-bold text-blue-600 mb-1">10 ETH</div>
                           <div className="text-xs text-gray-500">Average funding in 30 days</div>
                         </div>
                       </div>
