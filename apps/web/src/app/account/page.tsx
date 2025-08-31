@@ -5,10 +5,12 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/apiService';
 import { useRouter } from 'next/navigation';
+import { useActiveAccount } from 'thirdweb/react';
 
 export default function Account() {
   const router = useRouter();
   const { user, token, logout, isAuthenticated, isLoading: authLoading } = useAuth();
+  const activeAccount = useActiveAccount();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,6 +36,15 @@ export default function Account() {
   });
 
   const [tempData, setTempData] = useState(profileData);
+
+  // UI state for wallet copy + withdraw
+  const [copySuccess, setCopySuccess] = useState('');
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawDestination, setWithdrawDestination] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState(''); // in ETH
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [withdrawError, setWithdrawError] = useState('');
+  const [withdrawTxHash, setWithdrawTxHash] = useState('');
 
   // Redirigir si no está autenticado
   useEffect(() => {
@@ -68,6 +79,20 @@ export default function Account() {
       setTempData(userData);
     }
   }, [user]);
+
+  // Helper: parse ETH decimal string to wei BigInt
+  const parseEthToWei = (ethStr: string) => {
+    if (!ethStr) return 0n;
+    const cleaned = ethStr.trim();
+    if (cleaned === '') return 0n;
+    const parts = cleaned.split('.');
+    const whole = parts[0] || '0';
+    const frac = parts[1] || '';
+    const wholeWei = BigInt(whole) * 10n ** 18n;
+    const fracPadded = (frac + '0'.repeat(18)).slice(0, 18);
+    const fracWei = BigInt(fracPadded || '0');
+    return wholeWei + fracWei;
+  };
   
 
   if (authLoading) {
@@ -504,6 +529,133 @@ export default function Account() {
                     </div>
                   </div>
                 </div>
+              
+              {/* Wallet Actions: copy + withdraw */}
+              <div className="mt-4 p-4 bg-white rounded-xl border border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Connected Wallet</h3>
+                <div className="text-xs text-gray-600 break-all mb-3">
+                  {(profileData.walletAddress && profileData.walletAddress.length > 0) ? profileData.walletAddress : (activeAccount?.address || 'No wallet connected')}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      const addr = profileData.walletAddress || activeAccount?.address;
+                      if (!addr) return;
+                      try {
+                        await navigator.clipboard.writeText(addr);
+                        setCopySuccess('Copied');
+                        setTimeout(() => setCopySuccess(''), 2000);
+                      } catch (err) {
+                        setCopySuccess('');
+                      }
+                    }}
+                    className="px-3 py-2 border rounded-lg text-sm bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    Copy Wallet
+                  </button>
+                  <button
+                    onClick={() => setShowWithdrawModal(true)}
+                    className="px-3 py-2 border rounded-lg text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:opacity-95"
+                  >
+                    Withdraw
+                  </button>
+                  {copySuccess && <div className="text-xs text-green-600 self-center">{copySuccess}</div>}
+                </div>
+                <p className="mt-3 text-xs text-gray-500">Withdraws use your connected wallet to send native ETH to an external address. This applies to funds held in your ThirdWeb in-app or connected wallet.</p>
+              </div>
+              
+                {/* Withdraw Modal */}
+                {showWithdrawModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="w-full max-w-md bg-white rounded-2xl p-6">
+                      <h3 className="text-lg font-semibold mb-3">Withdraw ETH</h3>
+                      <p className="text-xs text-gray-500 mb-4">Send native ETH from your connected wallet to an external address.</p>
+
+                      <label className="text-xs font-medium">Destination Address</label>
+                      <input
+                        type="text"
+                        value={withdrawDestination}
+                        onChange={(e) => setWithdrawDestination(e.target.value)}
+                        className="w-full px-3 py-2 mb-3 border rounded-lg text-sm"
+                        placeholder="0x..."
+                      />
+
+                      <label className="text-xs font-medium">Amount (ETH)</label>
+                      <input
+                        type="text"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        className="w-full px-3 py-2 mb-3 border rounded-lg text-sm"
+                        placeholder="0.01"
+                      />
+
+                      {withdrawError && <div className="text-sm text-red-600 mb-2">{withdrawError}</div>}
+                      {withdrawTxHash && <div className="text-sm text-green-600 mb-2">Success: <a href={`https://sepolia.etherscan.io/tx/${withdrawTxHash}`} target="_blank" rel="noreferrer" className="underline">View tx</a></div>}
+
+                      <div className="flex gap-3 mt-4 justify-end">
+                        <button
+                          onClick={() => {
+                            setShowWithdrawModal(false);
+                            setWithdrawError('');
+                            setWithdrawTxHash('');
+                          }}
+                          className="px-4 py-2 rounded-lg border text-sm"
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            setWithdrawError('');
+                            setWithdrawTxHash('');
+                            if (!activeAccount || !activeAccount.address) {
+                              setWithdrawError('No connected wallet available to sign the transaction.');
+                              return;
+                            }
+                            const dest = withdrawDestination?.trim();
+                            if (!dest || !dest.startsWith('0x') || dest.length !== 42) {
+                              setWithdrawError('Please enter a valid destination address (0x...).');
+                              return;
+                            }
+                            // parse amount
+                            let valueWei: bigint;
+                            try {
+                              valueWei = parseEthToWei(withdrawAmount || '0');
+                              if (valueWei <= 0n) {
+                                setWithdrawError('Enter an amount greater than 0');
+                                return;
+                              }
+                            } catch (err) {
+                              setWithdrawError('Invalid amount');
+                              return;
+                            }
+
+                            setWithdrawLoading(true);
+                            try {
+                              // Use ThirdWeb account's sendTransaction API
+                              const tx = await activeAccount.sendTransaction({
+                                to: dest,
+                                value: valueWei,
+                              });
+                              // tx.transactionHash should be present
+                              setWithdrawTxHash((tx && tx.transactionHash) || tx?.hash || '');
+                              setWithdrawError('');
+                            } catch (err: any) {
+                              console.error('Withdraw error', err);
+                              setWithdrawError(err?.message || 'Transaction failed');
+                            } finally {
+                              setWithdrawLoading(false);
+                            }
+                          }}
+                          disabled={withdrawLoading}
+                          className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white text-sm disabled:opacity-50"
+                        >
+                          {withdrawLoading ? 'Sending...' : 'Send'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Account Settings */}
