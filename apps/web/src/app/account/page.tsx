@@ -1,35 +1,139 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/useAuth';
+import { apiService } from '@/services/apiService';
+import { useRouter } from 'next/navigation';
 
 export default function Account() {
+  const router = useRouter();
+  const { user, token, logout, isAuthenticated, isLoading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
   const [profileData, setProfileData] = useState({
-    firstName: 'Juan',
-    lastName: 'Pérez',
-    email: 'juan.perez@morphopymes.com',
-    phone: '+57 300 123 4567',
-    location: 'Bogotá, Colombia',
-    occupation: 'Software Engineer & Entrepreneur',
-    company: 'TechStart Colombia',
-    bio: 'Passionate entrepreneur focused on developing innovative technology solutions for Latin American small businesses. With over 5 years of experience in fintech and blockchain, I believe in democratizing access to investment opportunities.',
-    interests: ['Blockchain', 'FinTech', 'Startups', 'AI'],
+    firstName: '',
+    lastName: '',
+    email: '',
+    walletAddress: '',
+    userType: 'entrepreneur' as 'entrepreneur' | 'investor',
+    description: '',
     profileImage: '/default-avatar.svg',
-    joinedDate: '2024-01-15',
-    isVerified: true
+    verified: false,
+    createdAt: '',
+    // Campos adicionales opcionales
+    phone: '',
+    location: '',
+    occupation: '',
+    company: '',
+    bio: '',
+    interests: [] as string[],
   });
 
   const [tempData, setTempData] = useState(profileData);
 
-  const handleSave = () => {
-    setProfileData(tempData);
-    setIsEditing(false);
+  // Redirigir si no está autenticado
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  // Cargar datos del usuario cuando esté disponible
+  useEffect(() => {
+    if (user) {
+      console.log('👤 Loading user data into profile:', user);
+      const userData = {
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        walletAddress: user.walletAddress || '',
+        userType: user.userType || 'entrepreneur',
+        description: user.description || '',
+        profileImage: user.profileImage || '/default-avatar.svg',
+        verified: user.verified || false,
+        createdAt: user.createdAt || '',
+        // Campos adicionales con valores por defecto
+        phone: '',
+        location: 'Sin especificar',
+        occupation: user.userType === 'entrepreneur' ? 'Emprendedor' : 'Inversionista',
+        company: 'Sin especificar',
+        bio: user.description || '',
+        interests: user.userType === 'entrepreneur' ? ['Emprendimiento', 'Negocios'] : ['Inversiones', 'Finanzas'],
+      };
+      setProfileData(userData);
+      setTempData(userData);
+    }
+  }, [user]);
+  
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100/60 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // El useEffect se encarga de la redirección
+  }
+
+  const handleSave = async () => {
+    if (!user?.walletAddress) return;
+    
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      console.log('💾 Updating profile with data:', tempData);
+      // Enviar todos los campos editables
+      const updateData = {
+        firstName: tempData.firstName,
+        lastName: tempData.lastName,
+        email: tempData.email || undefined,
+        description: tempData.description || undefined,
+        profileImage: tempData.profileImage !== '/default-avatar.svg' ? tempData.profileImage : undefined,
+        phone: tempData.phone || undefined,
+        location: tempData.location || undefined,
+        occupation: tempData.occupation || undefined,
+        company: tempData.company || undefined,
+        bio: tempData.bio || undefined,
+        interests: tempData.interests || [],
+      };
+
+      const response = await apiService.updateUserProfile(user.walletAddress, updateData);
+
+      if (response.success && response.data) {
+        console.log('✅ Profile updated successfully');
+        setProfileData(tempData);
+        setIsEditing(false);
+        setSuccess('Perfil actualizado exitosamente');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        console.error('❌ Profile update failed:', response.message);
+        setError(response.message || 'Error al actualizar el perfil');
+      }
+    } catch (error) {
+      console.error('💥 Error updating profile:', error);
+      setError('Error de conexión. Intenta nuevamente.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
     setTempData(profileData);
     setIsEditing(false);
+    setError('');
+    setSuccess('');
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +176,7 @@ export default function Account() {
             {/* Quick Stats */}
             <div className="flex justify-center items-center space-x-8">
               <div className="text-center">
-                <div className="text-lg font-bold text-blue-600">{profileData.isVerified ? 'Verified' : 'Unverified'}</div>
+                <div className="text-lg font-bold text-blue-600">{profileData.verified ? 'Verified' : 'Unverified'}</div>
                 <div className="text-xs text-gray-500 font-medium">Account Status</div>
               </div>
               <div className="w-px h-8 bg-gray-300"></div>
@@ -157,6 +261,29 @@ export default function Account() {
                 </div>
 
                 {/* Profile Form */}
+                {/* Mensajes de éxito y error */}
+                {success && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-green-700 text-sm font-medium">{success}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      <p className="text-red-700 text-sm font-medium">{error}</p>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -207,7 +334,7 @@ export default function Account() {
                     ) : (
                       <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900 font-medium text-sm flex items-center">
                         {profileData.email}
-                        {profileData.isVerified && (
+                        {profileData.verified && (
                           <svg className="w-4 h-4 ml-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
@@ -216,40 +343,21 @@ export default function Account() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Phone Number</label>
-                      {isEditing ? (
-                        <input
-                          type="tel"
-                          value={tempData.phone}
-                          onChange={(e) => setTempData({...tempData, phone: e.target.value})}
-                          className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                          placeholder="Enter phone number"
-                        />
-                      ) : (
-                        <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900 font-medium text-sm">
-                          {profileData.phone}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={tempData.location}
-                          onChange={(e) => setTempData({...tempData, location: e.target.value})}
-                          className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                          placeholder="City, Country"
-                        />
-                      ) : (
-                        <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900 font-medium text-sm">
-                          {profileData.location}
-                        </div>
-                      )}
-                    </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={tempData.location}
+                        onChange={(e) => setTempData({...tempData, location: e.target.value})}
+                        className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        placeholder="City, Country"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900 font-medium text-sm">
+                        {profileData.location}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -303,31 +411,7 @@ export default function Account() {
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-2">Interests</label>
-                    {isEditing ? (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={tempData.interests.join(', ')}
-                          onChange={(e) => setTempData({...tempData, interests: e.target.value.split(',').map(s => s.trim()).filter(s => s)})}
-                          className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                          placeholder="Enter interests separated by commas"
-                        />
-                        <p className="text-xs text-gray-500">Separate interests with commas (e.g., Blockchain, FinTech, AI)</p>
-                      </div>
-                    ) : (
-                      <div className="px-3 py-2 bg-gray-50 rounded-lg">
-                        <div className="flex flex-wrap gap-2">
-                          {profileData.interests.map((interest, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                              {interest}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  {/* Interests removed as requested */}
 
                   {isEditing && (
                     <div className="flex gap-4 pt-6 border-t border-gray-200">
@@ -382,7 +466,7 @@ export default function Account() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200/50">
                       <div className="text-2xl font-bold text-blue-600">
-                        {new Date(profileData.joinedDate).toLocaleDateString('en', { 
+                        {new Date(profileData.createdAt || new Date()).toLocaleDateString('en', { 
                           month: 'short', 
                           year: 'numeric' 
                         })}
@@ -392,9 +476,9 @@ export default function Account() {
 
                     <div className="text-center p-4 bg-purple-50 rounded-xl border border-purple-200/50">
                       <div className="text-2xl font-bold text-purple-600">
-                        {profileData.interests.length}
+                        {profileData.userType ? profileData.userType.charAt(0).toUpperCase() + profileData.userType.slice(1) : '—'}
                       </div>
-                      <div className="text-xs text-gray-600 font-medium">Interests</div>
+                      <div className="text-xs text-gray-600 font-medium">User Type</div>
                     </div>
                   </div>
                 </div>
@@ -419,47 +503,7 @@ export default function Account() {
                     </div>
                   </div>
 
-                  {/* Push Notifications */}
-                  <div className="bg-gradient-to-r from-purple-50 to-purple-100/60 rounded-xl p-4 border border-purple-200/50">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900 text-sm">Push Notifications</h3>
-                        <p className="text-xs text-gray-600">Get real-time updates on your investments</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" />
-                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Two Factor Authentication */}
-                  <div className="bg-gradient-to-r from-yellow-50 to-yellow-100/60 rounded-xl p-4 border border-yellow-200/50">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900 text-sm">Two-Factor Authentication</h3>
-                        <p className="text-xs text-gray-600">Add extra security to your account</p>
-                      </div>
-                      <button className="px-3 py-1.5 bg-yellow-600 text-white font-medium text-sm rounded-lg hover:bg-yellow-700 transition-colors">
-                        Enable
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Privacy Settings */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-indigo-100/60 rounded-xl p-4 border border-indigo-200/50">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900 text-sm">Profile Visibility</h3>
-                        <p className="text-xs text-gray-600">Control who can see your profile information</p>
-                      </div>
-                      <select className="text-sm border border-indigo-200 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                        <option>Public</option>
-                        <option>Private</option>
-                        <option>Investors Only</option>
-                      </select>
-                    </div>
-                  </div>
+                  {/* Removed push notifications, two-factor, and profile visibility as requested */}
 
                   {/* Account Deletion */}
                   <div className="bg-gradient-to-r from-red-50 to-red-100/60 rounded-xl p-4 border border-red-200/50">

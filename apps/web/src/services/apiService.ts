@@ -56,8 +56,8 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      console.log('🚀 Frontend making API request to:', `${API_BASE_URL}${endpoint}`);
-      console.log('📋 Frontend request options:', JSON.stringify(options, null, 2));
+  console.log('🚀 Frontend making API request to:', `${API_BASE_URL}${endpoint}`);
+  console.log('📋 Frontend request options:', JSON.stringify(options, null, 2));
       
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: {
@@ -71,7 +71,7 @@ class ApiService {
       console.log('📡 Frontend response headers:', Object.fromEntries(response.headers.entries()));
 
       const data = await response.json();
-      console.log('📦 Frontend response data:', JSON.stringify(data, null, 2));
+  console.log('📦 Frontend response data:', JSON.stringify(data, null, 2));
       
       return data;
     } catch (error) {
@@ -102,6 +102,7 @@ class ApiService {
 
   // Verificar token JWT
   async verifyToken(token: string): Promise<ApiResponse<{ user: User }>> {
+    console.log('🔁 apiService.verifyToken called');
     return this.makeRequest<{ user: User }>('/api/auth/verify', {
       method: 'GET',
       headers: {

@@ -181,7 +181,14 @@ export class AuthController {
   static async verifyToken(req: Request, res: Response) {
     try {
       const authHeader = req.headers.authorization;
+      console.log('🔎 /api/auth/verify called - headers snapshot:', {
+        authorization: authHeader ? '[present]' : '[missing]',
+        origin: req.headers.origin,
+        'user-agent': req.headers['user-agent']?.substring(0, 80) || '[unknown]',
+      });
+
       const token = AuthService.extractTokenFromHeader(authHeader);
+      console.log('🔑 Extracted token:', token ? `${token.slice(0, 10)}...(${token.length} chars)` : '[none]');
 
       if (!token) {
         return res.status(401).json({
@@ -194,6 +201,7 @@ export class AuthController {
       const payload = AuthService.verifyToken(token);
 
       if (!payload) {
+        console.warn('⚠️ Token verification failed for provided token');
         return res.status(401).json({
           success: false,
           code: AUTH_CODES.INVALID_TOKEN,
@@ -201,16 +209,21 @@ export class AuthController {
         });
       }
 
+      console.log('📦 Token payload:', payload);
+
       // Buscar usuario actualizado
       const user = await UserService.getUserByWallet(payload.walletAddress);
 
       if (!user) {
+        console.warn('⚠️ User referenced in token not found in DB:', payload.walletAddress);
         return res.status(404).json({
           success: false,
           code: AUTH_CODES.USER_NOT_FOUND,
           message: 'Usuario no encontrado'
         });
       }
+
+      console.log('✅ User found for token:', { wallet: user.walletAddress, id: user._id });
 
       res.json({
         success: true,
