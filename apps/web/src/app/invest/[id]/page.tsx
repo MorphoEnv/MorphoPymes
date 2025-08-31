@@ -8,6 +8,11 @@ import Image from 'next/image';
 import { apiService } from '@/services/apiService';
 import PortfolioChart from '@/components/PortfolioChart';
 import { useAuth } from '@/hooks/useAuth';
+import { useMetaMask } from '@/hooks/useMetaMask';
+import { useToast } from '@/hooks/useToast';
+import { blockchainService } from '@/services/blockchainServices';
+import { currencyService } from '@/services/currencyService';
+import { ToastContainer } from '@/components/Toast';
 
 export default function ProjectDetail() {
   const params = useParams();
@@ -17,6 +22,10 @@ export default function ProjectDetail() {
   const [showInvestorsModal, setShowInvestorsModal] = useState(false);
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [blockchainData, setBlockchainData] = useState<any>(null);
+  const [userInvestmentAmount, setUserInvestmentAmount] = useState<string>('0');
+  const [loadingBlockchain, setLoadingBlockchain] = useState(false);
+  const [txError, setTxError] = useState<string>('');
   
   // Build chart series from investments (cumulative raised over time)
   const chartData = useMemo(() => {
@@ -58,8 +67,46 @@ export default function ProjectDetail() {
     return { totalValue: last, totalGain, percentageGain };
   }, [chartData]);
   const { user } = useAuth();
+  const { 
+    isMetaMaskInstalled, 
+    isConnected: isWalletConnected, 
+    account: walletAccount, 
+    chainId,
+    connecting: walletConnecting,
+    error: walletError,
+    connect: connectWallet,
+    switchToBaseSepolia 
+  } = useMetaMask();
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [returning, setReturning] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  
+  const toast = useToast();
+
+  // Load blockchain data for this campaign
+  const loadBlockchainData = async () => {
+    if (!project?.campaignId || !user?.walletAddress) return;
+    
+    setLoadingBlockchain(true);
+    try {
+      const campaign = await blockchainService.getCampaignById(project.campaignId);
+      setBlockchainData(campaign);
+      
+      if (campaign) {
+        // Check if user is the owner
+        setIsOwner(campaign.creator.toLowerCase() === user.walletAddress.toLowerCase());
+        
+        // Get user's investment amount in this campaign
+        const investmentAmount = await blockchainService.getInvestmentAmount(project.campaignId, user.walletAddress);
+        setUserInvestmentAmount(investmentAmount || '0');
+      }
+    } catch (err) {
+      console.error('Error loading blockchain data:', err);
+    } finally {
+      setLoadingBlockchain(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -77,6 +124,13 @@ export default function ProjectDetail() {
       }
     })();
   }, [params.id]);
+
+  // Load blockchain data when project and user are ready
+  useEffect(() => {
+    if (project && user?.walletAddress) {
+      loadBlockchainData();
+    }
+  }, [project, user?.walletAddress]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
@@ -112,6 +166,25 @@ export default function ProjectDetail() {
       currency: 'USD',
       minimumFractionDigits: 0
     }).format(amount);
+  };
+
+  // Validation function for investment
+  const validateInvestment = (amount: number): string[] => {
+    const errors: string[] = [];
+    
+    if (!amount || amount <= 0) {
+      errors.push('Please enter a valid investment amount.');
+    }
+    
+    if (amount < project.funding.minimumInvestment) {
+      errors.push(`Minimum investment is ${formatCurrency(project.funding.minimumInvestment)}`);
+    }
+    
+    if (amount > 1000000) { // $1M limit for safety
+      errors.push('Investment amount exceeds maximum limit of $1,000,000');
+    }
+    
+    return errors;
   };
 
   // Safe accessors for optional financials
@@ -346,6 +419,67 @@ export default function ProjectDetail() {
 
                 {/* Investment Panel */}
                 <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-xl border border-blue-200/50">
+                  {/* Error Display */}
+                  {txError && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <h4 className="text-red-800 font-medium">Transaction Error</h4>
+                          <p className="text-red-700 text-sm mt-1">{txError}</p>
+                          <button 
+                            onClick={() => setTxError('')}
+                            className="text-red-600 text-sm underline mt-1"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Blockchain Status */}
+                  {project?.onChain && blockchainData && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                          <span className="text-blue-800 font-medium">Blockchain Campaign</span>
+                        </div>
+                        <button
+                          onClick={loadBlockchainData}
+                          disabled={loadingBlockchain}
+                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50"
+                        >
+                          {loadingBlockchain ? 'Syncing...' : 'Refresh'}
+                        </button>
+                      </div>
+                      <div className="mt-2 text-sm text-blue-700">
+                        Campaign #{project.campaignId} • Status: {blockchainData.isActive ? 'Active' : 'Paused'} • 
+                        {blockchainData.isFunded ? 'Funded ✅' : 'Seeking Funding'}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* User Investment Status */}
+                  {project?.onChain && Number(userInvestmentAmount) > 0 && (
+                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <span className="text-green-800 font-medium">Your Investment: {currencyService.formatCurrency(Number(userInvestmentAmount), 'ETH')}</span>
+                          {blockchainData?.isFunded && (
+                            <p className="text-green-700 text-sm mt-1">Campaign funded! Returns available when entrepreneur pays back.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Investment Details</h3>
                   
                   {/* Progress */}
@@ -395,51 +529,232 @@ export default function ProjectDetail() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Investment Amount (USD)
                     </label>
-                    <input
-                      type="number"
-                      value={investmentAmount}
-                      onChange={(e) => setInvestmentAmount(e.target.value)}
-                      placeholder={`Min. $${project.funding.minimumInvestment}`}
-                      className="w-full px-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={investmentAmount}
+                        onChange={(e) => {
+                          setInvestmentAmount(e.target.value);
+                          setValidationErrors([]); // Clear validation errors on change
+                        }}
+                        placeholder={`Min. $${project.funding.minimumInvestment}`}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent outline-none transition-colors ${
+                          validationErrors.length > 0 
+                            ? 'border-red-300 focus:ring-red-500' 
+                            : 'border-blue-200 focus:ring-blue-500'
+                        }`}
+                      />
+                      {Number(investmentAmount) > 0 && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          {validateInvestment(Number(investmentAmount)).length === 0 ? (
+                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {Number(investmentAmount) > 0 && (
+                      <div className="mt-2 text-sm">
+                        {validateInvestment(Number(investmentAmount)).length === 0 ? (
+                          <span className="text-green-600">✓ Valid investment amount</span>
+                        ) : (
+                          <span className="text-red-600">{validateInvestment(Number(investmentAmount))[0]}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {/* Entrepreneur-only: Return funds button */}
-                  {(() => {
-                    try {
-                      const isOwner = Boolean(
-                        user && (
-                          (typeof project?.entrepreneur === 'string' && user._id === project.entrepreneur) ||
-                          (project?.entrepreneur && user._id === project?.entrepreneur?._id) ||
-                          (user.walletAddress && project?.entrepreneur?.walletAddress && user.walletAddress?.toLowerCase() === project.entrepreneur.walletAddress?.toLowerCase())
-                        )
-                      );
 
-                      // show button only to project owner and only if there is funding to refund and not already refunded
-                      if (isOwner && (project?.funding?.raised > 0) && !project?.refunded) {
-                        return (
-                          <div className="mt-4">
-                            <button
-                              onClick={() => setShowReturnModal(true)}
-                              className="w-full bg-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
-                              disabled={returning}
-                            >
-                              {returning ? 'Returning funds...' : 'Return Funds to Investors'}
-                            </button>
+                  {/* Wallet Connection Status */}
+                  {!user?.walletAddress && !isWalletConnected && (
+                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <svg className="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <div>
+                            <span className="text-yellow-800 text-sm font-medium">Wallet not connected</span>
+                            <p className="text-yellow-700 text-xs mt-1">Connect your wallet to invest</p>
                           </div>
-                        );
-                      }
-                    } catch (err) {
-                      // ignore and don't render
-                    }
-                    return null;
-                  })()}
+                        </div>
+                        {isMetaMaskInstalled && (
+                          <button
+                            onClick={connectWallet}
+                            disabled={walletConnecting}
+                            className="px-3 py-1 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+                          >
+                            {walletConnecting ? 'Connecting...' : 'Connect'}
+                          </button>
+                        )}
+                      </div>
+                      {!isMetaMaskInstalled && (
+                        <div className="mt-2 text-xs text-yellow-700">
+                          <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" className="underline">
+                            Install MetaMask first
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {(user?.walletAddress || isWalletConnected) && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="flex-1">
+                          <span className="text-green-800 text-sm font-medium">Wallet connected</span>
+                          <p className="text-green-700 text-xs mt-1 font-mono">
+                            {(user?.walletAddress || walletAccount)?.slice(0, 6)}...{(user?.walletAddress || walletAccount)?.slice(-4)}
+                          </p>
+                        </div>
+                        {chainId && chainId !== '0x14a34' && (
+                          <button
+                            onClick={switchToBaseSepolia}
+                            className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                          >
+                            Switch to Base
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {walletError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-red-800 text-sm">{walletError}</span>
+                      </div>
+                    </div>
+                  )}
+                  {/* Blockchain Contract Actions */}
+                  {project?.onChain && blockchainData && user?.walletAddress && (
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-3">
+                      <h4 className="font-medium text-gray-900">Blockchain Actions</h4>
+                      
+                      {/* Owner Actions */}
+                      {isOwner && (
+                        <div className="space-y-2">
+                          {blockchainData.isFunded && !blockchainData.fundsDistributed && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  setTxError('');
+                                  const txHash = await blockchainService.distributeFunds(project.campaignId);
+                                  console.log('Funds distributed:', txHash);
+                                  await loadBlockchainData();
+                                } catch (err: any) {
+                                  setTxError(err?.message || 'Failed to distribute funds');
+                                }
+                              }}
+                              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                            >
+                              Withdraw Raised Funds
+                            </button>
+                          )}
+                          
+                          {blockchainData.isFunded && blockchainData.fundsDistributed && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  setTxError('');
+                                  const requiredPayment = await blockchainService.getRequiredPayment(project.campaignId);
+                                  const confirmed = window.confirm(`Return investment to investors? Required payment: ${currencyService.formatCurrency(Number(requiredPayment), 'ETH')}`);
+                                  if (confirmed) {
+                                    const txHash = await blockchainService.returnInvestment(project.campaignId);
+                                    console.log('Investment returned:', txHash);
+                                    await loadBlockchainData();
+                                  }
+                                } catch (err: any) {
+                                  setTxError(err?.message || 'Failed to return investment');
+                                }
+                              }}
+                              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                            >
+                              Return Investment to Investors
+                            </button>
+                          )}
+
+                          {blockchainData.isActive && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  setTxError('');
+                                  const txHash = await blockchainService.toggleCampaignStatus(project.campaignId, false);
+                                  console.log('Campaign paused:', txHash);
+                                  await loadBlockchainData();
+                                } catch (err: any) {
+                                  setTxError(err?.message || 'Failed to pause campaign');
+                                }
+                              }}
+                              className="w-full bg-yellow-600 text-white py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                            >
+                              Pause Campaign
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Investor Actions */}
+                      {!isOwner && Number(userInvestmentAmount) > 0 && (
+                        <div className="space-y-2">
+                          {blockchainData.isFunded && blockchainData.returnsDistributed && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  setTxError('');
+                                  const txHash = await blockchainService.withdrawReturns(project.campaignId);
+                                  console.log('Returns withdrawn:', txHash);
+                                  await loadBlockchainData();
+                                } catch (err: any) {
+                                  setTxError(err?.message || 'Failed to withdraw returns');
+                                }
+                              }}
+                              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                            >
+                              Withdraw Returns + Interest
+                            </button>
+                          )}
+                          
+                          {!blockchainData.isActive && !blockchainData.isFunded && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  setTxError('');
+                                  const txHash = await blockchainService.refundInvestment(project.campaignId);
+                                  console.log('Investment refunded:', txHash);
+                                  await loadBlockchainData();
+                                } catch (err: any) {
+                                  setTxError(err?.message || 'Failed to get refund');
+                                }
+                              }}
+                              className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                            >
+                              Get Refund (Campaign Failed)
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <button
                     onClick={() => setShowInvestModal(true)}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105"
+                    disabled={!isMetaMaskInstalled && !user?.walletAddress}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
-                    Invest Now
+                    {!isMetaMaskInstalled && !user?.walletAddress ? 'Install MetaMask to Invest' : 'Invest Now'}
                   </button>
+
 
                   <div className="mt-4 text-xs text-gray-500 text-center">
                     Secure investment powered by blockchain technology
@@ -456,6 +771,57 @@ export default function ProjectDetail() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Confirm Investment</h3>
+            
+            {/* Wallet Connection Notice */}
+            {!user?.walletAddress && !isWalletConnected && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <span className="text-blue-800 font-medium">MetaMask Connection Required</span>
+                    <p className="text-blue-700 text-sm mt-1">We'll connect to your MetaMask wallet to process this investment</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(user?.walletAddress || isWalletConnected) && (
+              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <span className="text-green-800 font-medium">Wallet Connected</span>
+                    <p className="text-green-700 text-sm mt-1 font-mono">
+                      {(user?.walletAddress || walletAccount)?.slice(0, 8)}...{(user?.walletAddress || walletAccount)?.slice(-6)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Validation Errors */}
+            {validationErrors.length > 0 && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-red-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h4 className="text-red-800 font-medium">Validation Errors</h4>
+                    <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
+                      {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-4 mb-6">
               <div className="flex justify-between">
                 <span>Project:</span>
@@ -465,6 +831,12 @@ export default function ProjectDetail() {
                 <span>Investment Amount:</span>
                 <span className="font-medium">{formatCurrency(Number(investmentAmount) || 0)}</span>
               </div>
+              {project.campaignId && (
+                <div className="flex justify-between">
+                  <span>Blockchain Campaign:</span>
+                  <span className="font-medium text-blue-600">#{project.campaignId}</span>
+                </div>
+              )}
               <hr />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total:</span>
@@ -481,35 +853,117 @@ export default function ProjectDetail() {
               <button
                 onClick={async () => {
                   try {
-                    // Use authenticated user's wallet when available
-                    const wallet = user?.walletAddress || (window as any)?.ethereum?.selectedAddress || null;
-                    if (!wallet) {
-                      alert('Please connect your wallet before investing.');
-                      return;
-                    }
-
+                    setTxError(''); // Clear any previous errors
+                    setValidationErrors([]);
+                    
                     const amt = Number(investmentAmount);
-                    if (!amt || amt <= 0) {
-                      alert('Please enter a valid investment amount.');
+                    
+                    // Validate investment
+                    const errors = validateInvestment(amt);
+                    if (errors.length > 0) {
+                      setValidationErrors(errors);
+                      toast.error('Invalid Investment', errors[0]);
                       return;
                     }
 
-                    const res = await apiService.investProject(project._id || project.id, wallet, amt);
-                    if (res && res.success && res.data) {
-                      // update project funding locally with returned project
-                      setProject(res.data.project || res.data);
-                      setShowInvestModal(false);
-                      setInvestmentAmount('');
-                    } else {
-                      console.error('Investment failed', res);
-                      alert(res.message || 'Investment failed');
+                    // Try to get wallet address from user or connect wallet
+                    let wallet = user?.walletAddress || walletAccount;
+                    
+                    if (!wallet) {
+                      // Try to connect wallet
+                      console.log('Attempting to connect wallet...');
+                      toast.info('Connecting Wallet', 'Please connect your MetaMask wallet');
+                      wallet = await connectWallet();
+                      if (!wallet) {
+                        toast.error('Connection Failed', 'Failed to connect wallet. Please try again.');
+                        return;
+                      }
                     }
-                  } catch (err) {
-                    console.error('Error making investment', err);
-                    alert('Error making investment');
+
+                    console.log('Investment attempt:', { project: project.title, amount: amt, wallet });
+
+                    console.log('🔍 Project blockchain info:', {
+                      campaignId: project.campaignId,
+                      onChain: project.onChain,
+                      hasBlockchainData: !!blockchainData
+                    });
+
+                    // First try blockchain investment if project has campaignId
+                    if (project.campaignId) {
+                      try {
+                        console.log('🔄 Starting blockchain investment process...');
+                        console.log('📊 Project campaignId:', project.campaignId);
+                        
+                        toast.info('Processing Investment', 'Preparing blockchain transaction...');
+                        
+                        // Check if MetaMask is unlocked
+                        if (typeof window !== 'undefined' && (window as any).ethereum) {
+                          const accounts = await (window as any).ethereum.request({ method: 'eth_accounts' });
+                          console.log('🔍 Current MetaMask accounts:', accounts);
+                          
+                          if (accounts.length === 0) {
+                            console.log('⚠️ No accounts connected, requesting connection...');
+                            await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+                          }
+                        }
+                        
+                        const ethAmount = await currencyService.usdToEth(amt);
+                        console.log('💰 USD to ETH conversion:', { usd: amt, eth: ethAmount });
+                        
+                        toast.info('Confirm Transaction', 'Please confirm the transaction in MetaMask');
+                        
+                        console.log('🚀 Calling blockchainService.investInCampaign with params:', {
+                          campaignId: project.campaignId,
+                          ethAmount: ethAmount.toString(),
+                          usdAmount: amt
+                        });
+                        
+                        const txHash = await blockchainService.investInCampaign(project.campaignId, ethAmount.toString());
+                        console.log('✅ Blockchain investment successful:', txHash);
+                        
+                        // Also update API for tracking
+                        const res = await apiService.investProject(project._id || project.id, wallet, amt);
+                        if (res && res.success && res.data) {
+                          setProject(res.data.project || res.data);
+                        }
+                        
+                        // Refresh blockchain data
+                        await loadBlockchainData();
+                        
+                        toast.success(
+                          'Investment Successful!',
+                          `Transaction completed. Hash: ${txHash.slice(0, 10)}...`,
+                          10000
+                        );
+                      } catch (blockchainErr: any) {
+                        console.error('Blockchain investment failed:', blockchainErr);
+                        setTxError(blockchainErr?.message || 'Blockchain investment failed');
+                        toast.error('Investment Failed', blockchainErr?.message || 'Blockchain investment failed');
+                        return;
+                      }
+                    } else {
+                      // API-only investment for projects without blockchain campaign
+                      console.log('Making API-only investment...');
+                      toast.info('Processing Investment', 'Recording investment in database...');
+                      
+                      const res = await apiService.investProject(project._id || project.id, wallet, amt);
+                      if (res && res.success && res.data) {
+                        setProject(res.data.project || res.data);
+                        toast.success('Investment Recorded!', 'Your investment has been successfully recorded');
+                      } else {
+                        toast.error('Investment Failed', res?.message || 'Unknown error occurred');
+                        return;
+                      }
+                    }
+                    
+                    setShowInvestModal(false);
+                    setInvestmentAmount('');
+                  } catch (err: any) {
+                    console.error('Error making investment:', err);
+                    setTxError(err?.message || 'An unexpected error occurred');
+                    toast.error('Investment Error', err?.message || 'An unexpected error occurred');
                   }
-                }
-                }
+                }}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Confirm
@@ -566,6 +1020,8 @@ export default function ProjectDetail() {
                 onClick={async () => {
                   try {
                     setReturning(true);
+                    toast.info('Processing', 'Marking funds as returned...');
+                    
                     const res = await apiService.returnProjectFunds(project._id || project.id);
                     if (res && res.success && res.data) {
                       // refresh project from API
@@ -574,12 +1030,13 @@ export default function ProjectDetail() {
                         setProject(refreshed.data.project);
                       }
                       setShowReturnModal(false);
+                      toast.success('Funds Returned', 'All investor funds have been marked as returned');
                     } else {
-                      alert(res?.message || 'Failed to mark funds as returned');
+                      toast.error('Operation Failed', res?.message || 'Failed to mark funds as returned');
                     }
-                  } catch (err) {
+                  } catch (err: any) {
                     console.error('Error returning funds', err);
-                    alert('Error returning funds');
+                    toast.error('Error', 'An error occurred while returning funds');
                   } finally {
                     setReturning(false);
                   }
@@ -592,6 +1049,10 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
+
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   );
 }
