@@ -77,6 +77,7 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     event CampaignGoalReached(uint256 indexed campaignId, uint256 totalRaised);
     event ReturnsDistributed(uint256 indexed campaignId, address indexed owner, uint256 totalAmount);
     event InvestorWithdrew(uint256 indexed campaignId, address indexed investor, uint256 amount);
+    event PaymentToOwner(address indexed sender, uint256 amount);
 
     /**
      * @dev Constructor to initialize the contract with MoPy token address
@@ -348,6 +349,20 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         uint256 totalPenalty = dailyPenalty * daysOverdue;
         
         return baseAmount + totalPenalty;
+    }
+
+    /**
+     * @dev Allows anyone to send ETH directly to contract owner
+     * @notice Send ETH with this function to pay the contract owner
+     */
+    function payOwner() public payable nonReentrant {
+        require(msg.value > 0, "Must send ETH");
+        
+        address payable contractOwner = payable(owner());
+        (bool success, ) = contractOwner.call{value: msg.value}("");
+        require(success, "ETH transfer failed");
+        
+        emit PaymentToOwner(msg.sender, msg.value);
     }
 
     /**
