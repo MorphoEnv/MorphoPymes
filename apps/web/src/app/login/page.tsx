@@ -17,9 +17,29 @@ export default function Login() {
   const { connect, isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
   
-  const { user, isLoading, needsRegistration, completeRegistration } = useAuth();
+  const { user, isLoading, needsRegistration, completeRegistration, login } = useAuth();
   const [connectingMethod, setConnectingMethod] = useState<string>('');
   const [showRegistrationPopup, setShowRegistrationPopup] = useState(false);
+
+  // Connect MetaMask (injected) explicitly and trigger auth login
+  const handleConnectMetaMask = async () => {
+    setConnectingMethod('metamask');
+    try {
+      const wallet = createWallet('io.metamask');
+      await connect(async () => {
+        await wallet.connect({ client });
+        return wallet;
+      });
+      console.log('MetaMask connected via ThirdWeb');
+      // trigger backend login flow
+      try { await login(); } catch (e) { console.warn('Login after MetaMask connect failed:', e); }
+    } catch (error) {
+      console.error('Error connecting MetaMask:', error);
+      alert('Error al conectar MetaMask. Asegúrate de tener MetaMask instalado.');
+    } finally {
+      setConnectingMethod('');
+    }
+  };
 
   // Redirigir al dashboard si ya está autenticado
   useEffect(() => {
@@ -139,7 +159,6 @@ export default function Login() {
   }
 
   return (
-    <>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100/60 flex items-center justify-center px-6 py-12">
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]"></div>
         
@@ -164,6 +183,7 @@ export default function Login() {
             {/* Wallet Connection Options */}
             <div className="space-y-4">
               {/* ThirdWeb Connection */}
+              <div className="grid grid-cols-1 gap-3">
               <button
                 onClick={handleConnectThirdWeb}
                 disabled={connectingMethod === 'thirdweb' || isConnecting}
@@ -189,37 +209,63 @@ export default function Login() {
                 )}
               </button>
 
-              {/* ThirdWeb Email Wallet */}
+              {/* MetaMask (injected) */}
               <button
-                onClick={handleConnectThirdWebEmail}
-                disabled={connectingMethod === 'thirdweb-email' || isConnecting}
-                className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-purple-200 rounded-xl transition-all duration-300 ${
-                  connectingMethod === 'thirdweb-email' || isConnecting
+                onClick={handleConnectMetaMask}
+                disabled={connectingMethod === 'metamask' || isConnecting}
+                className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-yellow-200 rounded-xl transition-all duration-300 ${
+                  connectingMethod === 'metamask' || isConnecting
                     ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-md'
+                    : 'hover:border-yellow-300 hover:bg-yellow-50/50 hover:shadow-md'
                 }`}
               >
-                {connectingMethod === 'thirdweb-email' || isConnecting ? (
+                {connectingMethod === 'metamask' || isConnecting ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
-                    <span className="font-medium text-gray-700">Creando...</span>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-600"></div>
+                    <span className="font-medium text-gray-700">Conectando MetaMask...</span>
                   </>
                 ) : (
                   <>
-                    <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
+                    <div className="w-6 h-6 bg-yellow-400 rounded-lg flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor"/></svg>
                     </div>
-                    <span className="font-medium text-gray-700">Conectar con Google</span>
-                    <div className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">ThirdWeb</div>
+                    <span className="font-medium text-gray-700">Conectar MetaMask</span>
+                    <div className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Inyectada</div>
                   </>
                 )}
               </button>
-            </div>
+              </div>
+
+               {/* ThirdWeb Email Wallet */}
+               <button
+                 onClick={handleConnectThirdWebEmail}
+                 disabled={connectingMethod === 'thirdweb-email' || isConnecting}
+                 className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-purple-200 rounded-xl transition-all duration-300 ${
+                   connectingMethod === 'thirdweb-email' || isConnecting
+                     ? 'opacity-50 cursor-not-allowed'
+                     : 'hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-md'
+                 }`}
+               >
+               {connectingMethod === 'thirdweb-email' || isConnecting ? (
+                 <>
+                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                   <span className="font-medium text-gray-700">Creando...</span>
+                 </>
+               ) : (
+                 <>
+                   <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                     <svg className="w-4 h-4 text-white" viewBox="0 0 24 24">
+                       <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                       <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                       <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                       <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                     </svg>
+                   </div>
+                   <span className="font-medium text-gray-700">Conectar con Google</span>
+                   <div className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">ThirdWeb</div>
+                 </>
+               )}
+             </button>
 
             {/* Contact Us Link */}
             <div className="mt-8 text-center">
@@ -263,6 +309,6 @@ export default function Login() {
         onComplete={handleRegistrationComplete}
         walletAddress={account?.address || ''}
       />
-    </>
+    </div>
   );
 }

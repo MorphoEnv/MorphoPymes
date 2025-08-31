@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/apiService';
 import { useRouter } from 'next/navigation';
+import { blockchainService } from '@/services/blockchainServices';
 
 // We'll compute dashboard stats from the fetched `projects` for the current user
 // (totalRaised, totalInvestors, totalViews, activeProjects)
@@ -168,6 +169,14 @@ export default function Dashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [location, setLocation] = useState('');
   const [marketSize, setMarketSize] = useState('');
+
+  // Blockchain form fields
+  const [fundingGoalEth, setFundingGoalEth] = useState('');
+  const [minInvestmentEth, setMinInvestmentEth] = useState('');
+  const [expectedROI, setExpectedROI] = useState('');
+  const [paymentDaysAfterGoal, setPaymentDaysAfterGoal] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
 
   const createProjectHandler = async (saveAsDraft = false) => {
     if (!user?.walletAddress) return;
@@ -882,6 +891,29 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Blockchain Fields */}
+              <div className="bg-gray-50 rounded-2xl p-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Blockchain Settings</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Funding Goal (ETH)</label>
+                    <input value={fundingGoalEth} onChange={(e) => setFundingGoalEth(e.target.value)} type="number" step="any" className="w-full px-4 py-3 border rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Min Investment (ETH)</label>
+                    <input value={minInvestmentEth} onChange={(e) => setMinInvestmentEth(e.target.value)} type="number" step="any" className="w-full px-4 py-3 border rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Expected ROI (%)</label>
+                    <input value={expectedROI} onChange={(e) => setExpectedROI(e.target.value)} type="number" step="any" className="w-full px-4 py-3 border rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Payment days after goal</label>
+                    <input value={paymentDaysAfterGoal} onChange={(e) => setPaymentDaysAfterGoal(e.target.value)} type="number" className="w-full px-4 py-3 border rounded-lg" />
+                  </div>
+                </div>
+              </div>
+
               {/* Form Actions */}
               <div className="flex space-x-4 pt-4 border-t border-gray-200">
                 <button
@@ -906,11 +938,52 @@ export default function Dashboard() {
                   type="button"
                   onClick={async () => await createProjectHandler(false)}
                   disabled={submitting}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
                 >
                   {submitting ? 'Publishing...' : 'Publish Project'}
                 </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (isPublishing) return;
+                    setIsPublishing(true);
+                    setPublishMessage(null);
+                    try {
+                      if (!title) throw new Error('Project Title is required');
+                      const reg = await blockchainService.registerCompany(title);
+                      const companyId = reg?.companyId ?? String(reg);
+
+                      const goal = fundingGoalEth || '0';
+                      const minInv = minInvestmentEth || '0';
+                      const roi = Number(expectedROI) || 0;
+                      const paymentDays = Number(paymentDaysAfterGoal) || 0;
+
+                      const created = await blockchainService.createCampaign(
+                        companyId,
+                        goal,
+                        minInv,
+                        roi,
+                        0,
+                        paymentDays
+                      );
+
+                      setPublishMessage(`Company ${companyId} and campaign created on blockchain. TX: ${created.txHash}`);
+                      setTitle(''); setShortDescription(''); setFullDescription(''); 
+                      setFundingGoalEth(''); setMinInvestmentEth(''); setExpectedROI(''); setPaymentDaysAfterGoal('');
+                      setShowCreateModal(false);
+                    } catch (err: any) {
+                      setPublishMessage(`Error: ${err?.message ?? String(err)}`);
+                    } finally {
+                      setIsPublishing(false);
+                    }
+                  }}
+                  className={`px-6 py-3 rounded-lg ${isPublishing ? 'bg-gray-400 text-white' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                >
+                  {isPublishing ? 'Publishing to Blockchain...' : 'Publish to Blockchain'}
+                </button>
               </div>
+
+              {publishMessage && <div className="mt-3 text-sm text-gray-700">{publishMessage}</div>}
             </form>
           </div>
         </div>
