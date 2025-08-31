@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import MessageBubble from './MessageBubble';
 
 interface Message {
   id: string;
@@ -52,7 +53,7 @@ export default function MorphChatbot({ isOpen, onToggle }: MorphChatbotProps) {
     setIsLoading(true);
 
     try {
-      // Preparar mensajes para la API
+      // Preparar mensajes para la API de OpenAI
       const apiMessages = messages
         .filter(msg => msg.sender === 'user' || msg.sender === 'morph')
         .map(msg => ({
@@ -66,12 +67,30 @@ export default function MorphChatbot({ isOpen, onToggle }: MorphChatbotProps) {
         content: inputMessage,
       });
 
-      // Por ahora simularemos la respuesta hasta que tengamos OpenAI funcionando
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Llamar a nuestra API de OpenAI
+      const response = await fetch('/api/ai/openai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: apiMessages,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
       
+      if (!data.message) {
+        throw new Error('No message in response');
+      }
+
       const morphResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Entiendo tu pregunta sobre "${inputMessage.slice(0, 30)}..."\n\n¡Excelente pregunta! Como Morph, estoy aquí para ayudarte con todo lo relacionado a MorphoPymes. En este momento estoy siendo configurado para conectarme con OpenAI, pero ya puedo conversar contigo.\n\n¿Te gustaría que te explique cómo funciona nuestra plataforma de micro-inversiones? 🚀`,
+        content: data.message,
         sender: 'morph',
         timestamp: new Date(),
       };
@@ -81,7 +100,7 @@ export default function MorphChatbot({ isOpen, onToggle }: MorphChatbotProps) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: 'Lo siento, estoy teniendo problemas técnicos. Por favor intenta de nuevo en un momento. 🔧',
+        content: 'Lo siento, estoy teniendo problemas técnicos en este momento. 🔧\n\n¿Podrías intentar de nuevo? Si el problema persiste, verifica que la API Key de OpenAI esté configurada correctamente.',
         sender: 'morph',
         timestamp: new Date(),
       };
@@ -154,26 +173,7 @@ export default function MorphChatbot({ isOpen, onToggle }: MorphChatbotProps) {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`max-w-[80%] ${
-                message.sender === 'user' 
-                  ? 'bg-blue-600 text-white rounded-2xl rounded-br-md' 
-                  : 'bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md'
-              } p-4 shadow-sm`}>
-                <p className="text-sm whitespace-pre-line">{message.content}</p>
-                <p className={`text-xs mt-2 ${
-                  message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
-                }`}>
-                  {message.timestamp.toLocaleTimeString('es', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </p>
-              </div>
-            </div>
+            <MessageBubble key={message.id} message={message} />
           ))}
           
           {isLoading && (
