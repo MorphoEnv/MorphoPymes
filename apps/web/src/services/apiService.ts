@@ -111,6 +111,15 @@ class ApiService {
     });
   }
 
+  // Verificar email por token (GET /api/auth/verify-email?token=...)
+  async verifyEmailToken(token: string): Promise<ApiResponse<{ message?: string }>> {
+    console.log('🔁 apiService.verifyEmailToken called');
+    const endpoint = `/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+    return this.makeRequest<{ message?: string }>(endpoint, {
+      method: 'GET',
+    });
+  }
+
   // Registro de usuario (método original mantenido para compatibilidad)
   async registerUser(userData: CreateUserData): Promise<ApiResponse<{ user: User }>> {
     return this.makeRequest<{ user: User }>('/api/users/register', {
