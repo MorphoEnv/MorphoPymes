@@ -36,6 +36,7 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         uint256 registrationDate;
         bool isRegistered;
         address owner;
+        address companyAddress;
     }
 
     /// @dev Campaign data structure
@@ -61,6 +62,9 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     
     /// @dev Mapping from owner address to array of company IDs
     mapping(address => uint256[]) public ownerCompanies;
+    
+    /// @dev Mapping from company address to company ID
+    mapping(address => uint256) public companyAddressToId;
     
     /// @dev Mapping from campaign ID to Campaign data
     mapping(uint256 => Campaign) public campaigns;
@@ -98,15 +102,25 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         
         uint256 companyId = nextCompanyId++;
         
+        // Generate unique address for company using CREATE2-like deterministic calculation
+        address companyAddress = address(uint160(uint256(keccak256(abi.encodePacked(
+            address(this),
+            companyId,
+            _companyName,
+            msg.sender
+        )))));
+        
         companies[companyId] = Company({
             companyId: companyId,
             companyName: _companyName,
             registrationDate: block.timestamp,
             isRegistered: true,
-            owner: msg.sender
+            owner: msg.sender,
+            companyAddress: companyAddress
         });
         
         ownerCompanies[msg.sender].push(companyId);
+        companyAddressToId[companyAddress] = companyId;
         
         emit CompanyRegistered(companyId, msg.sender, _companyName, block.timestamp);
         return companyId;
@@ -398,6 +412,17 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
      */
     function getNextCompanyId() public view returns (uint256) {
         return nextCompanyId;
+    }
+
+    /**
+     * @dev Returns company data by company address
+     * @param _companyAddress The unique address of the company
+     * @return The company data structure
+     */
+    function getCompanyByAddress(address _companyAddress) public view returns (Company memory) {
+        uint256 companyId = companyAddressToId[_companyAddress];
+        require(companyId > 0, "Company not found");
+        return companies[companyId];
     }
 
     /**
