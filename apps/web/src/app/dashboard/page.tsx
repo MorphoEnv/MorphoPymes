@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/useAuth';
+import { apiService } from '@/services/apiService';
+import { useRouter } from 'next/navigation';
 
 // Mock data para proyectos del usuario
 const userProjects = [
@@ -49,17 +52,57 @@ export default function Dashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState('projects');
   const [projectImages, setProjectImages] = useState<string[]>([]);
+  const [projectImageFiles, setProjectImageFiles] = useState<File[]>([]);
   const [useMilestones, setUseMilestones] = useState(false);
   const [milestones, setMilestones] = useState([
     { title: '', description: '', target: '', completed: false }
   ]);
 
+  const { user, token } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [projects, setProjects] = useState<any[]>(userProjects);
+
+  useEffect(() => {
+    (async () => {
+      if (!user?.walletAddress) return;
+      setLoadingProjects(true);
+      try {
+  const res = await apiService.getProjectsByEntrepreneur(user.walletAddress, token ?? undefined);
+        if (res.success && res.data) {
+          setProjects(res.data.projects || []);
+        }
+      } catch (err) {
+        console.error('Error loading projects:', err);
+      } finally {
+        setLoadingProjects(false);
+      }
+    })();
+  }, [user?.walletAddress, token]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0
     }).format(amount);
+  };
+
+  // Use explicit locale formatting to avoid SSR/client mismatch
+  const formatNumber = (value: number) => {
+    try {
+      return new Intl.NumberFormat('en-US').format(value);
+    } catch (e) {
+      return String(value);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -82,13 +125,16 @@ export default function Dashboard() {
     const files = event.target.files;
     if (files) {
       const newImages: string[] = [];
+      const newFiles: File[] = [];
       Array.from(files).forEach(file => {
+        newFiles.push(file);
         const reader = new FileReader();
         reader.onload = (e) => {
           if (e.target?.result) {
             newImages.push(e.target.result as string);
             if (newImages.length === files.length) {
               setProjectImages(prev => [...prev, ...newImages]);
+              setProjectImageFiles(prev => [...prev, ...newFiles]);
             }
           }
         };
@@ -98,7 +144,8 @@ export default function Dashboard() {
   };
 
   const removeImage = (index: number) => {
-    setProjectImages(prev => prev.filter((_, i) => i !== index));
+  setProjectImages(prev => prev.filter((_, i) => i !== index));
+  setProjectImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const addMilestone = () => {
@@ -119,6 +166,81 @@ export default function Dashboard() {
     setProjectImages([]);
     setUseMilestones(false);
     setMilestones([{ title: '', description: '', target: '', completed: false }]);
+  };
+
+  // Create project form state
+  const [title, setTitle] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
+  const [fullDescription, setFullDescription] = useState('');
+  const [repaymentDays, setRepaymentDays] = useState<number | ''>('');
+  const [fundingGoal, setFundingGoal] = useState<number | ''>('');
+  const [category, setCategory] = useState('');
+  const [minInvestment, setMinInvestment] = useState<number | ''>('');
+  const [submitting, setSubmitting] = useState(false);
+  const [location, setLocation] = useState('');
+
+  const createProjectHandler = async (saveAsDraft = false) => {
+    if (!user?.walletAddress) return;
+    // client-side validation for required fields only when publishing
+    if (!saveAsDraft && (!title || !shortDescription || !fullDescription || !location || !fundingGoal)) {
+      alert('Please fill required fields: Title, Short Description, Full Description, Location and Funding Goal.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // If there are files selected, upload them first to the API which will store them in MinIO
+      let uploadedUrls: string[] = [];
+      if (projectImageFiles.length > 0) {
+        const formData = new FormData();
+        projectImageFiles.forEach((f) => formData.append('images', f));
+        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/images/upload`, {
+          method: 'POST',
+          body: formData,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
+        const uploadJson = await uploadRes.json();
+        if (uploadJson.success && uploadJson.data?.urls) {
+          uploadedUrls = uploadJson.data.urls;
+        } else {
+          console.error('Image upload failed', uploadJson);
+        }
+      }
+
+      const payload = {
+        title,
+        shortDescription,
+        fullDescription,
+        category,
+        location,
+        funding: {
+          target: Number(fundingGoal) || 100,
+          minimumInvestment: Number(minInvestment) || 5,
+          raised: 0,
+          percentage: 0,
+          investors: 0,
+          expectedROI: 'N/A',
+          repaymentDays: repaymentDays || undefined
+        },
+        milestones: useMilestones ? milestones : [],
+        images: uploadedUrls.length ? uploadedUrls : projectImages,
+        draft: !!saveAsDraft,
+        entrepreneurWallet: user.walletAddress
+      };
+
+      const res = await apiService.createProject(payload, token ?? undefined);
+      if (res.success) {
+        const created = res.data?.project;
+        if (created) setProjects(prev => [created, ...prev]);
+        setShowCreateModal(false);
+        resetForm();
+      } else {
+        console.error('Create project failed', res);
+      }
+    } catch (err) {
+      console.error('Error creating project:', err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -190,7 +312,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Views</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalViews.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalViews)}</p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,7 +327,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Active Projects</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.activeProjects}</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.activeProjects)}</p>
                 </div>
                 <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
                   <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,11 +397,11 @@ export default function Dashboard() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {userProjects.map((project) => (
-                      <div key={project.id} className="bg-gray-50 rounded-2xl p-4 hover:bg-gray-100 transition-colors">
+                    {projects.map((project) => (
+                      <div key={project._id ?? project.id} className="bg-gray-50 rounded-2xl p-4 hover:bg-gray-100 transition-colors">
                         <div className="relative h-32 rounded-xl overflow-hidden mb-4">
                           <Image
-                            src={project.image}
+                            src={(project.images && project.images[0]) || project.image || '/Figura1.png'}
                             alt={project.title}
                             fill
                             className="object-cover"
@@ -315,13 +437,13 @@ export default function Dashboard() {
 
                         <div className="flex space-x-2">
                           <Link
-                            href={`/dashboard/project/${project.id}`}
+                            href={`/dashboard/project/${project._id ?? project.id}`}
                             className="flex-1 px-3 py-2 bg-blue-600 text-white text-center rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                           >
                             Edit
                           </Link>
                           <Link
-                            href={`/invest/${project.id}`}
+                            href={`/invest/${project._id ?? project.id}`}
                             className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 text-center rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
                           >
                             View
@@ -483,6 +605,8 @@ export default function Dashboard() {
                     </label>
                     <input
                       type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
                       placeholder="Enter your project title"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
@@ -494,6 +618,8 @@ export default function Dashboard() {
                     </label>
                     <textarea
                       rows={3}
+                      value={shortDescription}
+                      onChange={(e) => setShortDescription(e.target.value)}
                       placeholder="Brief description of your project (max 200 characters)"
                       maxLength={200}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
@@ -506,6 +632,8 @@ export default function Dashboard() {
                     </label>
                     <textarea
                       rows={6}
+                      value={fullDescription}
+                      onChange={(e) => setFullDescription(e.target.value)}
                       placeholder="Detailed description of your project, business model, target market, etc."
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                     ></textarea>
@@ -518,6 +646,8 @@ export default function Dashboard() {
                       </label>
                       <input
                         type="number"
+                        value={fundingGoal}
+                        onChange={(e) => setFundingGoal(e.target.value ? Number(e.target.value) : '')}
                         min="100"
                         max="1000"
                         placeholder="800"
@@ -529,7 +659,7 @@ export default function Dashboard() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Category *
                       </label>
-                      <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                      <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value={category} onChange={(e) => setCategory(e.target.value)}>
                         <option value="">Select category</option>
                         <option value="technology">Technology</option>
                         <option value="healthcare">Healthcare</option>
@@ -544,6 +674,8 @@ export default function Dashboard() {
                       </label>
                       <input
                         type="number"
+                        value={minInvestment}
+                        onChange={(e) => setMinInvestment(e.target.value ? Number(e.target.value) : '')}
                         min="5"
                         max="100"
                         placeholder="10"
@@ -551,6 +683,18 @@ export default function Dashboard() {
                       />
                       <p className="text-xs text-gray-500 mt-1">Min: $5, Max: $100</p>
                     </div>
+                  </div>
+                </div>
+
+                {/* Location and Funding minimal inputs required by backend */}
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
+                    <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Repayment Time (days) *</label>
+                    <input type="number" value={repaymentDays} onChange={(e) => setRepaymentDays(e.target.value ? Number(e.target.value) : '')} min={1} max={365} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
                   </div>
                 </div>
               </div>
@@ -748,15 +892,19 @@ export default function Dashboard() {
                 </button>
                 <button
                   type="button"
+                  onClick={async () => await createProjectHandler(true)}
+                  disabled={submitting}
                   className="px-6 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 font-medium transition-colors"
                 >
-                  Save as Draft
+                  {submitting ? 'Saving...' : 'Save as Draft'}
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={async () => await createProjectHandler(false)}
+                  disabled={submitting}
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
                 >
-                  Publish Project
+                  {submitting ? 'Publishing...' : 'Publish Project'}
                 </button>
               </div>
             </form>

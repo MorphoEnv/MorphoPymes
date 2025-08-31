@@ -15,7 +15,8 @@ export interface IFunding {
   percentage: number;
   investors: number;
   minimumInvestment: number;
-  expectedROI: string;
+  expectedROI?: string;
+  repaymentDays?: number;
 }
 
 export interface IProject extends Document {
@@ -100,9 +101,10 @@ const FundingSchema: Schema = new Schema({
     max: 100
   },
   expectedROI: {
-    type: String,
-    required: true,
-    trim: true
+  type: String,
+  required: false,
+  trim: true,
+  default: 'N/A'
   }
 }, { _id: false });
 
@@ -135,9 +137,10 @@ const ProjectSchema: Schema = new Schema({
   },
   milestones: [MilestoneSchema],
   category: {
-    type: String,
-    required: true,
-    enum: ['technology', 'healthcare', 'food', 'fashion', 'education', 'other']
+  type: String,
+  required: false,
+  enum: ['technology', 'healthcare', 'food', 'fashion', 'education', 'other'],
+  default: 'other'
   },
   location: {
     type: String,

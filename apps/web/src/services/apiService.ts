@@ -193,6 +193,41 @@ class ApiService {
       `/api/users?${params.toString()}`
     );
   }
+
+  // Projects
+  async getProjectsByEntrepreneur(walletAddress: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return this.makeRequest<{ projects: any[]; total: number; pages: number }>(`/api/projects/entrepreneur/${walletAddress}`, { method: 'GET', headers });
+  }
+
+  async createProject(payload: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return this.makeRequest<{ project: any }>(`/api/projects`, { method: 'POST', headers, body: JSON.stringify(payload) });
+  }
+
+  // Upload project images (multipart) - returns { urls: string[] }
+  async uploadProjectImages(files: File[], token?: string) {
+    try {
+      const form = new FormData();
+      files.forEach((f) => form.append('images', f));
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(`${API_BASE_URL}/api/projects/images/upload`, {
+        method: 'POST',
+        headers,
+        body: form,
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error uploading project images (apiService):', error);
+      return { success: false, message: 'Error uploading images' } as any;
+    }
+  }
 }
 
 // Exportar una instancia singleton
