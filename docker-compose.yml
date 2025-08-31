@@ -1,17 +1,19 @@
 version: '3.8'
 services:
   web:
+    env_file:
+      - ./apps/web/.env.local
     build:
       context: ./apps/web
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.example.com}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
       - "3001:3000" # host 3001 -> container 3000
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.example.com}
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/_next/static || exit 1"]
@@ -19,6 +21,8 @@ services:
       timeout: 10s
       retries: 3
   api:
+    env_file:
+      - ./apps/api/.env.local
     build:
       context: ./apps/api
       dockerfile: Dockerfile
