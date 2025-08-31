@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/ui/Navbar";
 import Footer from "@/components/ui/Footer";
 import ThirdWebProviderWrapper from "@/components/providers/ThirdWebProvider";
+import MorphProvider from "@/components/MorphProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,10 +17,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MorphoPymes - DeFi Micro-inversiones para PYMEs",
+  title: "MorphoPymes",
   description: "Plataforma descentralizada de micro-inversiones que conecta emprendedores latinoamericanos con inversores globales a través de blockchain y ENS.",
   keywords: "DeFi, micro-inversiones, PYMEs, blockchain, Ethereum, ENS, startup, fintech",
   authors: [{ name: "MorphoEnv Team" }],
+  icons: {
+    icon: [
+      { url: "/logo.svg?v=1", type: "image/svg+xml" },
+      { url: "/logo.png?v=1", type: "image/png" }
+    ],
+    apple: "/logo.png?v=1",
+  },
   openGraph: {
     title: "MorphoPymes - Democratizando las inversiones",
     description: "Invierte desde $10 en PYMEs latinoamericanas con transparencia blockchain",
@@ -43,6 +51,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <MorphProvider />
         </ThirdWebProviderWrapper>
       </body>
     </html>
