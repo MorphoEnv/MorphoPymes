@@ -36,12 +36,12 @@ export default function About() {
     },
     {
       name: "Santiago Valverde",
-      role: "Backend Developer", 
-      bio: "Infrastructure and API specialist focused on scalable fintech solutions.",
+      role: "Developer (Documentation Lead)",
+      bio: "Responsible for project documentation, technical writing, and related coordination.",
       avatar: "SV",
       photo: "/santiago.jpg",
       color: "from-blue-500 to-morpho-blue",
-      skills: ["Node.js", "Python", "PostgreSQL", "AWS"],
+      skills: ["APIs", "Documentation", "Node.js"],
       socials: {
         linkedin: "https://www.linkedin.com/in/santiago-valverde-135316279/",
         github: "https://github.com/santivalverde4",
