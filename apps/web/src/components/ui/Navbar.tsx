@@ -119,11 +119,11 @@ export default function Navbar() {
                 
                 {/* Profile Icon Button */}
                 <div className="relative group">
-                  <button className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <Link href="/account" className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white hover:shadow-lg transition-all duration-300 hover:scale-105">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                  </button>
+                  </Link>
                   
                   {/* Dropdown menu (opcional para el futuro) */}
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
@@ -131,8 +131,8 @@ export default function Navbar() {
                       <Link href="/dashboard" className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
                         Dashboard
                       </Link>
-                      <Link href="/profile" className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
-                        Profile
+                      <Link href="/account" className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
+                        Perfil
                       </Link>
                       <hr className="my-1" />
                       <button 
