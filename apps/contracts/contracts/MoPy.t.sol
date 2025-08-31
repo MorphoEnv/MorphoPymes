@@ -37,7 +37,8 @@ contract MoPyTest is Test {
     }
 
     function testMintFailsFromNonMinter() public {
-        vm.expectRevert("MoPy: caller is not the authorized minter");
+        vm.prank(user1); // Use non-owner, non-minter address
+        vm.expectRevert("MoPy: caller is not authorized");
         token.mint(user1, 1000 ether);
     }
 
@@ -56,7 +57,8 @@ contract MoPyTest is Test {
         vm.prank(minter);
         token.mint(user1, 1000 ether);
         
-        vm.expectRevert("MoPy: caller is not the authorized minter");
+        vm.prank(user1); // Use non-owner, non-minter address
+        vm.expectRevert("MoPy: caller is not authorized");
         token.burn(user1, 500 ether);
     }
 

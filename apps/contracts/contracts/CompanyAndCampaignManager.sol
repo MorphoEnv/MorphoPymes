@@ -25,9 +25,13 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     
     /// @dev Counter for generating unique campaign IDs
     uint256 private nextCampaignId = 1;
+    
+    /// @dev Counter for generating unique company IDs
+    uint256 private nextCompanyId = 1;
 
     /// @dev Company data structure
     struct Company {
+        uint256 companyId;
         string companyName;
         uint256 registrationDate;
         bool isRegistered;
@@ -36,19 +40,27 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
 
     /// @dev Campaign data structure
     struct Campaign {
+        uint256 companyId;
         address ownerAddress;
         uint256 goalAmount;
         uint256 minInvestment;
-        uint256 deadline;
         uint256 returnPercentage;
+        uint256 dailyPenaltyPercentage;
+        uint256 paymentDaysAfterGoal;
+        uint256 paymentDeadline;
         uint256 totalRaised;
+        uint256 totalPenaltiesPaid;
         bool active;
         bool goalReached;
         bool fundsDistributed;
+        bool returnsDistributed;
     }
 
-    /// @dev Mapping from company owner address to Company data
-    mapping(address => Company) public companies;
+    /// @dev Mapping from company ID to Company data
+    mapping(uint256 => Company) public companies;
+    
+    /// @dev Mapping from owner address to array of company IDs
+    mapping(address => uint256[]) public ownerCompanies;
     
     /// @dev Mapping from campaign ID to Campaign data
     mapping(uint256 => Campaign) public campaigns;
@@ -57,12 +69,14 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     mapping(uint256 => mapping(address => uint256)) public campaignInvestments;
 
     /// @dev Events
-    event CompanyRegistered(address indexed owner, string companyName, uint256 registrationDate);
-    event CampaignCreated(uint256 indexed campaignId, address indexed owner, uint256 goalAmount, uint256 deadline);
+    event CompanyRegistered(uint256 indexed companyId, address indexed owner, string companyName, uint256 registrationDate);
+    event CampaignCreated(uint256 indexed campaignId, uint256 indexed companyId, address indexed owner, uint256 goalAmount, uint256 deadline);
     event InvestmentReceived(uint256 indexed campaignId, address indexed investor, uint256 amount, uint256 tokensReceived);
     event Refunded(uint256 indexed campaignId, address indexed investor, uint256 amount, uint256 tokensBurned);
     event FundsDistributed(uint256 indexed campaignId, address indexed owner, uint256 amount);
     event CampaignGoalReached(uint256 indexed campaignId, uint256 totalRaised);
+    event ReturnsDistributed(uint256 indexed campaignId, address indexed owner, uint256 totalAmount);
+    event InvestorWithdrew(uint256 indexed campaignId, address indexed investor, uint256 amount);
 
     /**
      * @dev Constructor to initialize the contract with MoPy token address
@@ -76,58 +90,72 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     /**
      * @dev Registers a new business on the platform
      * @param _companyName The official name of the business
-     * @notice Only unregistered addresses can register a company
+     * @return companyId The unique identifier for the registered company
      */
-    function registerCompany(string memory _companyName) public {
-        require(!companies[msg.sender].isRegistered, "Caller is already a registered company owner");
+    function registerCompany(string memory _companyName) public returns (uint256) {
         require(bytes(_companyName).length > 0, "Company name cannot be empty");
         
-        companies[msg.sender] = Company({
+        uint256 companyId = nextCompanyId++;
+        
+        companies[companyId] = Company({
+            companyId: companyId,
             companyName: _companyName,
             registrationDate: block.timestamp,
             isRegistered: true,
             owner: msg.sender
         });
         
-        emit CompanyRegistered(msg.sender, _companyName, block.timestamp);
+        ownerCompanies[msg.sender].push(companyId);
+        
+        emit CompanyRegistered(companyId, msg.sender, _companyName, block.timestamp);
+        return companyId;
     }
 
     /**
      * @dev Creates a new crowdfunding campaign
+     * @param _companyId The ID of the company creating the campaign
      * @param _goalAmount The funding target in Wei
      * @param _minInvestment The minimum accepted contribution in Wei
-     * @param _durationInDays Campaign duration in days
      * @param _returnPercentage Promised return percentage (multiplied by 100, e.g., 1050 = 10.50%)
+     * @param _dailyPenaltyPercentage Daily penalty percentage for late payments
+     * @param _paymentDaysAfterGoal Number of days after goal is reached for payment deadline
      * @return campaignId The unique identifier for the created campaign
      */
     function createCampaign(
+        uint256 _companyId,
         uint256 _goalAmount,
         uint256 _minInvestment,
-        uint256 _durationInDays,
-        uint256 _returnPercentage
+        uint256 _returnPercentage,
+        uint256 _dailyPenaltyPercentage,
+        uint256 _paymentDaysAfterGoal
     ) public returns (uint256) {
-        require(companies[msg.sender].isRegistered, "Must be a registered company owner");
+        require(companies[_companyId].isRegistered, "Company does not exist");
+        require(companies[_companyId].owner == msg.sender, "Must be the company owner");
         require(_goalAmount > 0, "Goal amount must be greater than zero");
         require(_minInvestment > 0 && _minInvestment <= _goalAmount, "Invalid minimum investment amount");
-        require(_durationInDays > 0, "Duration must be greater than zero");
+        require(_paymentDaysAfterGoal > 0, "Payment days must be greater than zero");
         require(_returnPercentage <= MAX_RETURN_PERCENTAGE, "Return percentage cannot exceed 100%");
         
         uint256 campaignId = nextCampaignId++;
-        uint256 deadline = block.timestamp + (_durationInDays * 1 days);
         
         campaigns[campaignId] = Campaign({
+            companyId: _companyId,
             ownerAddress: msg.sender,
             goalAmount: _goalAmount,
             minInvestment: _minInvestment,
-            deadline: deadline,
             returnPercentage: _returnPercentage,
+            dailyPenaltyPercentage: _dailyPenaltyPercentage,
+            paymentDaysAfterGoal: _paymentDaysAfterGoal,
+            paymentDeadline: 0, // Set when goal is reached
             totalRaised: 0,
+            totalPenaltiesPaid: 0,
             active: true,
             goalReached: false,
-            fundsDistributed: false
+            fundsDistributed: false,
+            returnsDistributed: false
         });
         
-        emit CampaignCreated(campaignId, msg.sender, _goalAmount, deadline);
+        emit CampaignCreated(campaignId, _companyId, msg.sender, _goalAmount, 0);
         return campaignId;
     }
 
@@ -141,19 +169,22 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         
         require(campaign.active, "Campaign is not active");
         require(msg.value >= campaign.minInvestment, "Investment amount is below the minimum");
-        require(block.timestamp <= campaign.deadline, "Campaign deadline has passed");
         require(campaign.totalRaised < campaign.goalAmount, "Campaign goal has already been reached");
+        require(campaign.totalRaised + msg.value <= campaign.goalAmount, "Investment would exceed campaign goal");
         
         uint256 tokensToMint = (msg.value * TOKEN_RATE) / 1 ether;
+        
+        emit InvestmentReceived(_campaignId, msg.sender, msg.value, tokensToMint);
         
         campaignInvestments[_campaignId][msg.sender] += msg.value;
         campaign.totalRaised += msg.value;
         
-        mopyToken.mint(msg.sender, tokensToMint);
+       // mopyToken.mint(msg.sender, tokensToMint);
         
         if (campaign.totalRaised >= campaign.goalAmount) {
             campaign.active = false;
             campaign.goalReached = true;
+            campaign.paymentDeadline = block.timestamp + (campaign.paymentDaysAfterGoal * 1 days);
             emit CampaignGoalReached(_campaignId, campaign.totalRaised);
         }
         
@@ -178,7 +209,7 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         campaignInvestments[_campaignId][msg.sender] = 0;
         campaign.totalRaised -= investmentAmount;
         
-        mopyToken.burn(msg.sender, tokensToBurn);
+        //mopyToken.burn(msg.sender, tokensToBurn);
         
         (bool success, ) = msg.sender.call{value: investmentAmount}("");
         require(success, "ETH transfer failed");
@@ -208,6 +239,118 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Allows entrepreneur to return investment + interest to all investors
+     * @param _campaignId The ID of the campaign to return funds for
+     * @notice Only campaign owner can call this after funds were distributed
+     */
+    function returnInvestment(uint256 _campaignId) public payable nonReentrant {
+        Campaign storage campaign = campaigns[_campaignId];
+        
+        require(msg.sender == campaign.ownerAddress, "Only campaign owner can return investment");
+        require(campaign.goalReached, "Campaign goal was not reached");
+        require(campaign.fundsDistributed, "Funds must be distributed first");
+        require(!campaign.returnsDistributed, "Returns already distributed");
+        
+        // Calculate total return amount including penalties
+        uint256 totalReturnAmount = getRequiredPayment(_campaignId);
+        require(msg.value >= totalReturnAmount, "Insufficient ETH sent for returns (including penalties)");
+        
+        // Track penalties paid separately
+        uint256 baseAmount = campaign.totalRaised + (campaign.totalRaised * campaign.returnPercentage / 10000);
+        campaign.totalPenaltiesPaid = msg.value - baseAmount;
+        campaign.returnsDistributed = true;
+        
+        // Return investment + interest to each investor proportionally
+        // Implementation would require iterating through all investors for this campaign
+        // For now, this function accepts the total return amount and marks as distributed
+        // Individual investor withdrawals would need a separate function
+        
+        emit ReturnsDistributed(_campaignId, msg.sender, totalReturnAmount);
+    }
+
+    /**
+     * @dev Allows individual investors to withdraw their return (principal + interest)
+     * @param _campaignId The ID of the campaign to withdraw returns from
+     * @notice Investors can only withdraw after entrepreneur has deposited returns
+     */
+    function withdrawReturns(uint256 _campaignId) public nonReentrant {
+        Campaign storage campaign = campaigns[_campaignId];
+        uint256 investmentAmount = campaignInvestments[_campaignId][msg.sender];
+        
+        require(campaign.goalReached, "Campaign goal was not reached");
+        require(investmentAmount > 0, "No investment to withdraw");
+        
+        // Check if entrepreneur paid within deadline
+        if (block.timestamp > campaign.paymentDeadline && !campaign.returnsDistributed) {
+            // Entrepreneur missed deadline - investor gets refund only
+            campaignInvestments[_campaignId][msg.sender] = 0;
+            (bool refundSuccess, ) = msg.sender.call{value: investmentAmount}("");
+            require(refundSuccess, "ETH transfer failed");
+            emit Refunded(_campaignId, msg.sender, investmentAmount, 0);
+            return;
+        }
+        
+        require(campaign.returnsDistributed, "Returns have not been distributed by entrepreneur");
+        
+        // Calculate investor's return amount (investment + interest + proportional penalty rewards)
+        uint256 baseReturn = investmentAmount + (investmentAmount * campaign.returnPercentage / 10000);
+        
+        // Add proportional share of penalty rewards if entrepreneur paid penalties
+        if (campaign.totalPenaltiesPaid > 0) {
+            // Investor gets their proportional share of total penalties paid
+            uint256 investorPenaltyShare = (campaign.totalPenaltiesPaid * investmentAmount) / campaign.totalRaised;
+            baseReturn += investorPenaltyShare;
+        }
+        
+        uint256 returnAmount = baseReturn;
+        
+        // Clear the investment to prevent double withdrawal
+        campaignInvestments[_campaignId][msg.sender] = 0;
+        
+        // Transfer return amount to investor
+        (bool success, ) = msg.sender.call{value: returnAmount}("");
+        require(success, "ETH transfer failed");
+        
+        emit InvestorWithdrew(_campaignId, msg.sender, returnAmount);
+    }
+
+    /**
+     * @dev Calculates the required payment amount for entrepreneur including penalties
+     * @param _campaignId The ID of the campaign
+     * @return totalRequired The total amount entrepreneur must pay (principal + interest + penalties)
+     */
+    function getRequiredPayment(uint256 _campaignId) public view returns (uint256) {
+        Campaign memory campaign = campaigns[_campaignId];
+        
+        require(campaign.goalReached, "Campaign goal not reached");
+        require(campaign.fundsDistributed, "Funds not distributed yet");
+        
+        if (campaign.returnsDistributed) {
+            return 0; // Already paid
+        }
+        
+        // Base amount: principal + interest
+        uint256 baseAmount = campaign.totalRaised + (campaign.totalRaised * campaign.returnPercentage / 10000);
+        
+        // If no deadline set yet, return base amount
+        if (campaign.paymentDeadline == 0) {
+            return baseAmount;
+        }
+        
+        // If still within deadline, return base amount
+        if (block.timestamp <= campaign.paymentDeadline) {
+            return baseAmount;
+        }
+        
+        // Calculate penalty for days overdue
+        uint256 daysOverdue = (block.timestamp - campaign.paymentDeadline) / 1 days;
+        uint256 dailyPenalty = (campaign.totalRaised * campaign.dailyPenaltyPercentage / 10000);
+        uint256 totalPenalty = dailyPenalty * daysOverdue;
+        
+        return baseAmount + totalPenalty;
+    }
+
+    /**
      * @dev Returns campaign details
      * @param _campaignId The ID of the campaign
      * @return Campaign struct data
@@ -217,12 +360,29 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns company details
-     * @param _owner The address of the company owner
+     * @dev Returns company details by ID
+     * @param _companyId The ID of the company
      * @return Company struct data
      */
-    function getCompany(address _owner) public view returns (Company memory) {
-        return companies[_owner];
+    function getCompany(uint256 _companyId) public view returns (Company memory) {
+        return companies[_companyId];
+    }
+
+    /**
+     * @dev Returns all company IDs owned by an address
+     * @param _owner The address of the company owner
+     * @return Array of company IDs
+     */
+    function getOwnerCompanies(address _owner) public view returns (uint256[] memory) {
+        return ownerCompanies[_owner];
+    }
+
+    /**
+     * @dev Returns the next company ID that will be assigned
+     * @return The next company ID
+     */
+    function getNextCompanyId() public view returns (uint256) {
+        return nextCompanyId;
     }
 
     /**

@@ -11,8 +11,8 @@
     "deploy:token:sepolia": "npx hardhat ignition deploy ignition/modules/MoPy.ts --network sepolia",
     "deploy:manager:local": "npx hardhat ignition deploy ignition/modules/CompleteEcosystem.ts",
     "deploy:manager:sepolia": "npx hardhat ignition deploy ignition/modules/CompleteEcosystem.ts --network sepolia",
-    "verify:sepolia": "npx hardhat ignition verify chain-84532 --network sepolia",
-    "deploy:complete": "npm run deploy:manager:sepolia && npm run verify:sepolia",
+    "verify:sepolia": "npx hardhat verify --network sepolia",
+    "deploy": "npx hardhat run scripts/deploy-and-verify-complete.ts --network sepolia",
     "node": "npx hardhat node"
   },
   "devDependencies": {
