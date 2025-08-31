@@ -18,63 +18,152 @@ export default function Finance() {
     category: ''
   });
   
-  // Mock data para proyectos
+  // Mock data para proyectos - Datos más realistas para capturas
   const [projects, setProjects] = useState([
     {
       id: 1,
-      name: 'EcoTech Startup',
-      description: 'Sustainable technology solutions for urban environments',
-      target: 100000,
-      raised: 75000,
+      name: 'Verde Coffee Roastery',
+      description: 'Artisanal coffee roasting business in San José, specializing in Costa Rican highland beans with direct farmer partnerships and sustainable practices.',
+      target: 45000,
+      raised: 38750,
       status: 'open',
-      daysLeft: 15,
-      investors: 5,
+      daysLeft: 12,
+      investors: 47,
       image: '/default-avatar.svg',
-      category: 'Technology'
+      category: 'Food & Beverage',
+      location: 'San José, Costa Rica',
+      founded: '2024',
+      roi: '18-24%',
+      businessModel: 'B2B and retail sales'
     },
     {
       id: 2,
-      name: 'Local Coffee Roastery',
-      description: 'Premium coffee roasting facility in downtown',
-      target: 50000,
-      raised: 52000,
+      name: 'TechRepair Solutions',
+      description: 'Mobile device repair service expanding to 3 new locations. Specializes in smartphone, tablet, and laptop repairs with 24-hour service guarantee.',
+      target: 75000,
+      raised: 75000,
       status: 'closed',
       daysLeft: 0,
-      investors: 3,
+      investors: 63,
       image: '/default-avatar.svg',
-      category: 'Food & Beverage'
+      category: 'Technology',
+      location: 'Guadalajara, México',
+      founded: '2023',
+      roi: '22-28%',
+      businessModel: 'Service-based with retail component'
     },
     {
       id: 3,
-      name: 'Art Studio & Gallery',
-      description: 'Community art space for local artists',
-      target: 25000,
-      raised: 8500,
+      name: 'Eco Textiles Artesanales',
+      description: 'Sustainable textile production using organic cotton and traditional weaving techniques. Creating employment for 25 local artisans in rural Guatemala.',
+      target: 32000,
+      raised: 18400,
       status: 'open',
-      daysLeft: 22,
-      investors: 2,
+      daysLeft: 28,
+      investors: 31,
       image: '/default-avatar.svg',
-      category: 'Arts'
+      category: 'Manufacturing',
+      location: 'Antigua, Guatemala',
+      founded: '2024',
+      roi: '15-20%',
+      businessModel: 'Export and local sales'
+    },
+    {
+      id: 4,
+      name: 'FreshMarket Delivery',
+      description: 'Last-mile delivery service for fresh produce connecting local farmers with urban consumers. Using electric vehicles for sustainable logistics.',
+      target: 60000,
+      raised: 42300,
+      status: 'open',
+      daysLeft: 19,
+      investors: 52,
+      image: '/default-avatar.svg',
+      category: 'Logistics',
+      location: 'Medellín, Colombia',
+      founded: '2024',
+      roi: '20-25%',
+      businessModel: 'Commission-based marketplace'
+    },
+    {
+      id: 5,
+      name: 'Solar Panel Installation Co.',
+      description: 'Residential solar panel installation and maintenance services. Focus on middle-income households with financing options and energy savings guarantees.',
+      target: 90000,
+      raised: 67500,
+      status: 'open',
+      daysLeft: 35,
+      investors: 78,
+      image: '/default-avatar.svg',
+      category: 'Energy',
+      location: 'Lima, Perú',
+      founded: '2023',
+      roi: '25-30%',
+      businessModel: 'Installation and maintenance contracts'
+    },
+    {
+      id: 6,
+      name: 'Panadería Los Sabores',
+      description: 'Traditional bakery expanding with gluten-free and vegan product lines. Family business serving the community for 15 years, now scaling operations.',
+      target: 28000,
+      raised: 28000,
+      status: 'closed',
+      daysLeft: 0,
+      investors: 34,
+      image: '/default-avatar.svg',
+      category: 'Food & Beverage',
+      location: 'Puebla, México',
+      founded: '2009',
+      roi: '16-22%',
+      businessModel: 'Retail and wholesale distribution'
     }
   ]);
 
-  // Mock data para inversores
-  const [investorsData] = useState<{ [key: number]: Array<{ id: number; name: string; amount: number; date: string; avatar: string }> }>({
+  // Mock data para inversores - Datos más realistas y diversos
+  const [investorsData] = useState<{ [key: number]: Array<{ id: number; name: string; amount: number; date: string; avatar: string; country: string; type: string }> }>({
     1: [
-      { id: 1, name: 'John Smith', amount: 5000, date: '2024-08-15', avatar: '/default-avatar.svg' },
-      { id: 2, name: 'Maria Garcia', amount: 2500, date: '2024-08-14', avatar: '/default-avatar.svg' },
-      { id: 3, name: 'David Chen', amount: 10000, date: '2024-08-13', avatar: '/default-avatar.svg' },
-      { id: 4, name: 'Sarah Johnson', amount: 1500, date: '2024-08-12', avatar: '/default-avatar.svg' },
-      { id: 5, name: 'Michael Brown', amount: 3000, date: '2024-08-11', avatar: '/default-avatar.svg' },
+      { id: 1, name: 'María Elena Rodríguez', amount: 8500, date: '2024-08-28', avatar: '/default-avatar.svg', country: 'Costa Rica', type: 'Individual' },
+      { id: 2, name: 'Carlos Mendoza', amount: 5000, date: '2024-08-27', avatar: '/default-avatar.svg', country: 'Panama', type: 'Individual' },
+      { id: 3, name: 'Investment Fund LATAM', amount: 15000, date: '2024-08-25', avatar: '/default-avatar.svg', country: 'Mexico', type: 'Institution' },
+      { id: 4, name: 'Ana Sofía López', amount: 3200, date: '2024-08-24', avatar: '/default-avatar.svg', country: 'Colombia', type: 'Individual' },
+      { id: 5, name: 'Roberto Silva', amount: 2500, date: '2024-08-23', avatar: '/default-avatar.svg', country: 'Costa Rica', type: 'Individual' },
+      { id: 6, name: 'Verde Capital', amount: 4550, date: '2024-08-22', avatar: '/default-avatar.svg', country: 'Chile', type: 'Institution' },
     ],
     2: [
-      { id: 6, name: 'Emily Davis', amount: 8000, date: '2024-07-20', avatar: '/default-avatar.svg' },
-      { id: 7, name: 'Robert Wilson', amount: 4500, date: '2024-07-18', avatar: '/default-avatar.svg' },
-      { id: 8, name: 'Lisa Martinez', amount: 6000, date: '2024-07-15', avatar: '/default-avatar.svg' },
+      { id: 7, name: 'TechVentures MX', amount: 25000, date: '2024-07-15', avatar: '/default-avatar.svg', country: 'Mexico', type: 'Institution' },
+      { id: 8, name: 'Diego Fernández', amount: 12000, date: '2024-07-12', avatar: '/default-avatar.svg', country: 'Mexico', type: 'Individual' },
+      { id: 9, name: 'Innovación Capital', amount: 18000, date: '2024-07-10', avatar: '/default-avatar.svg', country: 'Colombia', type: 'Institution' },
+      { id: 10, name: 'Carmen Delgado', amount: 7500, date: '2024-07-08', avatar: '/default-avatar.svg', country: 'Spain', type: 'Individual' },
+      { id: 11, name: 'Luis Ramírez', amount: 5000, date: '2024-07-05', avatar: '/default-avatar.svg', country: 'Mexico', type: 'Individual' },
+      { id: 12, name: 'StartUp Fund', amount: 7500, date: '2024-07-03', avatar: '/default-avatar.svg', country: 'Argentina', type: 'Institution' },
     ],
     3: [
-      { id: 9, name: 'James Anderson', amount: 2000, date: '2024-08-10', avatar: '/default-avatar.svg' },
-      { id: 10, name: 'Anna Taylor', amount: 1200, date: '2024-08-08', avatar: '/default-avatar.svg' },
+      { id: 13, name: 'Artisan Collective', amount: 6000, date: '2024-08-20', avatar: '/default-avatar.svg', country: 'Guatemala', type: 'Institution' },
+      { id: 14, name: 'Isabella García', amount: 3500, date: '2024-08-18', avatar: '/default-avatar.svg', country: 'Guatemala', type: 'Individual' },
+      { id: 15, name: 'Fair Trade Investors', amount: 4200, date: '2024-08-15', avatar: '/default-avatar.svg', country: 'USA', type: 'Institution' },
+      { id: 16, name: 'Miguel Contreras', amount: 2200, date: '2024-08-12', avatar: '/default-avatar.svg', country: 'El Salvador', type: 'Individual' },
+      { id: 17, name: 'Sustainable Fund', amount: 2500, date: '2024-08-10', avatar: '/default-avatar.svg', country: 'Costa Rica', type: 'Institution' },
+    ],
+    4: [
+      { id: 18, name: 'Green Logistics Fund', amount: 15000, date: '2024-08-26', avatar: '/default-avatar.svg', country: 'Colombia', type: 'Institution' },
+      { id: 19, name: 'Patricia Morales', amount: 8500, date: '2024-08-24', avatar: '/default-avatar.svg', country: 'Colombia', type: 'Individual' },
+      { id: 20, name: 'Urban Mobility VC', amount: 12000, date: '2024-08-22', avatar: '/default-avatar.svg', country: 'Brazil', type: 'Institution' },
+      { id: 21, name: 'Alejandro Vega', amount: 4200, date: '2024-08-20', avatar: '/default-avatar.svg', country: 'Peru', type: 'Individual' },
+      { id: 22, name: 'Impact Investors', amount: 2600, date: '2024-08-18', avatar: '/default-avatar.svg', country: 'Chile', type: 'Institution' },
+    ],
+    5: [
+      { id: 23, name: 'Clean Energy Fund', amount: 20000, date: '2024-08-25', avatar: '/default-avatar.svg', country: 'Peru', type: 'Institution' },
+      { id: 24, name: 'Eduardo Vargas', amount: 12500, date: '2024-08-23', avatar: '/default-avatar.svg', country: 'Peru', type: 'Individual' },
+      { id: 25, name: 'Solar Capital LATAM', amount: 18000, date: '2024-08-21', avatar: '/default-avatar.svg', country: 'Mexico', type: 'Institution' },
+      { id: 26, name: 'Renewable Ventures', amount: 10000, date: '2024-08-19', avatar: '/default-avatar.svg', country: 'Colombia', type: 'Institution' },
+      { id: 27, name: 'Lucía Herrera', amount: 4500, date: '2024-08-17', avatar: '/default-avatar.svg', country: 'Ecuador', type: 'Individual' },
+      { id: 28, name: 'Sustainable Energy Co.', amount: 2500, date: '2024-08-15', avatar: '/default-avatar.svg', country: 'Chile', type: 'Institution' },
+    ],
+    6: [
+      { id: 29, name: 'Food Innovation Fund', amount: 8000, date: '2024-07-20', avatar: '/default-avatar.svg', country: 'Mexico', type: 'Institution' },
+      { id: 30, name: 'Local Community Bank', amount: 6500, date: '2024-07-18', avatar: '/default-avatar.svg', country: 'Mexico', type: 'Institution' },
+      { id: 31, name: 'Familia Investors', amount: 5500, date: '2024-07-15', avatar: '/default-avatar.svg', country: 'Mexico', type: 'Individual' },
+      { id: 32, name: 'Artisan Bakery Fund', amount: 4000, date: '2024-07-12', avatar: '/default-avatar.svg', country: 'Guatemala', type: 'Institution' },
+      { id: 33, name: 'Organic Food VC', amount: 4000, date: '2024-07-10', avatar: '/default-avatar.svg', country: 'Costa Rica', type: 'Institution' },
     ]
   });
 

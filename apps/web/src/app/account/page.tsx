@@ -6,13 +6,112 @@ import Image from 'next/image';
 export default function Account() {
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
-    firstName: 'Juan',
-    lastName: 'Pérez',
-    description: 'Entrepreneur passionate about technology and innovation in Latin America.',
-    profileImage: '/default-avatar.svg'
+    firstName: 'Carlos Eduardo',
+    lastName: 'Mendoza Rivera',
+    description: 'Serial entrepreneur and investor with 8+ years experience in Latin American fintech and sustainable business development. Currently focused on blockchain-based financial inclusion initiatives.',
+    profileImage: '/default-avatar.svg',
+    email: 'carlos.mendoza@morphopymes.com',
+    phone: '+506 8765-4321',
+    location: 'San José, Costa Rica',
+    joinDate: 'March 2024',
+    totalInvestments: 45,
+    totalInvested: 127500,
+    portfolioValue: 142300,
+    successfulExits: 12,
+    averageROI: '22.5%'
   });
 
   const [tempData, setTempData] = useState(profileData);
+
+  // Mock data para el portfolio e historial
+  const [portfolioData] = useState([
+    {
+      id: 1,
+      projectName: 'Verde Coffee Roastery',
+      investmentAmount: 8500,
+      currentValue: 9350,
+      roi: 10.0,
+      status: 'active',
+      investmentDate: '2024-08-28'
+    },
+    {
+      id: 2,
+      projectName: 'TechRepair Solutions',
+      investmentAmount: 12000,
+      currentValue: 14400,
+      roi: 20.0,
+      status: 'completed',
+      investmentDate: '2024-07-15'
+    },
+    {
+      id: 3,
+      projectName: 'Eco Textiles Artesanales',
+      investmentAmount: 5500,
+      currentValue: 6050,
+      roi: 10.0,
+      status: 'active',
+      investmentDate: '2024-08-20'
+    },
+    {
+      id: 4,
+      projectName: 'FreshMarket Delivery',
+      investmentAmount: 7200,
+      currentValue: 8280,
+      roi: 15.0,
+      status: 'active',
+      investmentDate: '2024-08-26'
+    },
+    {
+      id: 5,
+      projectName: 'Solar Panel Installation Co.',
+      investmentAmount: 15000,
+      currentValue: 18750,
+      roi: 25.0,
+      status: 'active',
+      investmentDate: '2024-08-25'
+    }
+  ]);
+
+  const [recentActivity] = useState([
+    {
+      id: 1,
+      type: 'investment',
+      description: 'Invested in Verde Coffee Roastery',
+      amount: 8500,
+      date: '2024-08-28',
+      status: 'completed'
+    },
+    {
+      id: 2,
+      type: 'return',
+      description: 'Received returns from TechRepair Solutions',
+      amount: 2400,
+      date: '2024-08-25',
+      status: 'completed'
+    },
+    {
+      id: 3,
+      type: 'investment',
+      description: 'Invested in FreshMarket Delivery',
+      amount: 7200,
+      date: '2024-08-22',
+      status: 'completed'
+    },
+    {
+      id: 4,
+      type: 'dividend',
+      description: 'Quarterly dividend from Solar Panel Installation Co.',
+      amount: 1125,
+      date: '2024-08-20',
+      status: 'completed'
+    }
+  ]);
+
+  // Calculate portfolio statistics
+  const totalInvested = portfolioData.reduce((sum, item) => sum + item.investmentAmount, 0);
+  const totalCurrentValue = portfolioData.reduce((sum, item) => sum + item.currentValue, 0);
+  const totalReturn = totalCurrentValue - totalInvested;
+  const activeInvestments = portfolioData.filter(item => item.status === 'active').length;
 
   const handleSave = () => {
     setProfileData(tempData);
@@ -196,8 +295,131 @@ export default function Account() {
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Settings Section - Right Side */}
+          {/* Portfolio Stats */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/5 border border-blue-100/50 p-6">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Portfolio Overview</h3>
+                <p className="text-sm text-gray-600 mt-1">Your investment performance</p>
+              </div>
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/60 rounded-xl p-4 border border-blue-200/50">
+                <div className="text-2xl font-bold text-blue-600">${totalInvested.toLocaleString()}</div>
+                <div className="text-xs text-gray-600 mt-1">Total Invested</div>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-green-100/60 rounded-xl p-4 border border-green-200/50">
+                <div className="text-2xl font-bold text-green-600">${totalCurrentValue.toLocaleString()}</div>
+                <div className="text-xs text-gray-600 mt-1">Current Value</div>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100/60 rounded-xl p-4 border border-purple-200/50">
+                <div className={`text-2xl font-bold ${totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {totalReturn >= 0 ? '+' : ''}${totalReturn.toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">Total Return</div>
+              </div>
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100/60 rounded-xl p-4 border border-orange-200/50">
+                <div className="text-2xl font-bold text-orange-600">{activeInvestments}</div>
+                <div className="text-xs text-gray-600 mt-1">Active Investments</div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-900 text-sm">Recent Investments</h4>
+              {portfolioData.slice(0, 3).map((investment: any, index: number) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200/50">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-2-3h6m-8 0V9a2 2 0 012-2h2a2 2 0 012 2v8M7 7h.01M7 3h.01" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">{investment.projectName}</div>
+                      <div className="text-xs text-gray-600">{investment.investmentDate}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold text-gray-900 text-sm">${investment.investmentAmount.toLocaleString()}</div>
+                    <div className={`text-xs ${investment.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {investment.roi >= 0 ? '+' : ''}{investment.roi}%
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/5 border border-blue-100/50 p-6">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Recent Activity</h3>
+                <p className="text-sm text-gray-600 mt-1">Your latest transactions and updates</p>
+              </div>
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            
+            <div className="space-y-4">
+              {recentActivity.map((activity: any, index: number) => (
+                <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg border border-gray-200/50 hover:shadow-md transition-all">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    activity.type === 'investment' ? 'bg-blue-100' :
+                    activity.type === 'return' ? 'bg-green-100' :
+                    activity.type === 'update' ? 'bg-purple-100' : 'bg-orange-100'
+                  }`}>
+                    {activity.type === 'investment' && (
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    )}
+                    {activity.type === 'return' && (
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                      </svg>
+                    )}
+                    {activity.type === 'update' && (
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                    {activity.type === 'milestone' && (
+                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900">{activity.description}</p>
+                      <time className="text-xs text-gray-500 whitespace-nowrap">{activity.date || activity.time}</time>
+                    </div>
+                    {activity.details && (
+                      <p className="text-xs text-gray-600 mt-1">{activity.details}</p>
+                    )}
+                    {activity.amount && (
+                      <p className={`text-sm font-semibold mt-2 ${
+                        activity.status === 'completed' ? 'text-green-600' : 
+                        activity.status === 'pending' ? 'text-orange-600' : 'text-blue-600'
+                      }`}>
+                        ${activity.amount.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/5 border border-blue-100/50 p-6">
             <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-blue-200/50 shadow-xl">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Account Settings</h2>
               
