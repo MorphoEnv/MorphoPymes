@@ -3,8 +3,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Install pnpm
-RUN npm install -g pnpm@10.15.0
+# Use Corepack to provide pnpm (no global npm installs)
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 
 # Copy lockfiles and install deps
 COPY package.json pnpm-lock.yaml ./
@@ -21,7 +21,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=4000
 
-RUN npm install -g pnpm@7
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json

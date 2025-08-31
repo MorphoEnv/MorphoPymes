@@ -4,8 +4,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Install pnpm
-RUN npm install -g pnpm@10.15.0
+# Use Corepack to provide pnpm (no global npm installs)
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 
 # Allow passing NEXT_PUBLIC_API_URL at build time so the value is embedded in the client bundle
 ARG NEXT_PUBLIC_API_URL
@@ -29,7 +29,7 @@ ENV PORT=3000
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
-RUN npm install -g pnpm@7
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 
 # Copy built assets and node_modules from builder
 COPY --from=builder /app/.next ./.next
