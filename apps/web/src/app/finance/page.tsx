@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import PortfolioChart from '../../components/PortfolioChart';
+// PortfolioChart removed from Finance per request
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/apiService';
 import { useActiveAccount } from 'thirdweb/react';
@@ -16,14 +16,7 @@ export default function FinancePage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [myInvestments, setMyInvestments] = useState<any[]>([]);
 
-  // Portfolio performance data for chart (fallback/static until we compute from real data)
-  const [portfolioPerformanceData, setPortfolioPerformanceData] = useState<any[]>([
-    { date: '2024-07-01', value: 5000000, change: 0 },
-    { date: '2024-07-15', value: 5250000, change: 5.0 },
-    { date: '2024-08-01', value: 5180000, change: -1.33 },
-    { date: '2024-08-15', value: 5420000, change: 4.63 },
-    { date: '2024-08-30', value: 5700000, change: 5.17 },
-  ]);
+  // PortfolioChart removed from Finance; stats remain
 
   // Function to format currency
   const formatCurrency = (amount: number) => {
@@ -90,14 +83,6 @@ export default function FinancePage() {
           });
 
           setMyInvestments(mine);
-
-          // optional: build a simple performance series from current total value
-          const totalValue = mine.reduce((s: number, m: any) => s + (m.currentValue || 0), 0);
-          const totalInvested = mine.reduce((s: number, m: any) => s + (m.myInvestment || 0), 0);
-          setPortfolioPerformanceData((old) => [
-            ...old,
-            { date: new Date().toISOString().slice(0, 10), value: totalValue, change: totalInvested ? ((totalValue - totalInvested) / totalInvested) * 100 : 0 },
-          ]);
         }
       } catch (err) {
         console.error('Error loading finance data:', err);
@@ -210,12 +195,7 @@ export default function FinancePage() {
       {/* Portfolio Chart */}
       <section className="px-4 md:px-6 pb-6">
         <div className="max-w-7xl mx-auto">
-          <PortfolioChart 
-            data={portfolioPerformanceData}
-            totalValue={portfolioStats.currentValue}
-            totalGain={portfolioStats.totalReturns}
-            percentageGain={portfolioStats.totalInvested ? (portfolioStats.totalReturns / portfolioStats.totalInvested) * 100 : 0}
-          />
+            {/* Portfolio Chart removed */}
         </div>
       </section>
 

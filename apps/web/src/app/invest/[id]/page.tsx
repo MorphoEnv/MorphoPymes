@@ -337,6 +337,7 @@ export default function ProjectDetail() {
                             totalValue={chartTotals.totalValue}
                             totalGain={chartTotals.totalGain}
                             percentageGain={chartTotals.percentageGain}
+                            showTimeframe={false}
                           />
                         </div>
 

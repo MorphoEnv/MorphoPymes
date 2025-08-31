@@ -13,6 +13,7 @@ interface PortfolioChartProps {
   totalValue: number;
   totalGain: number;
   percentageGain: number;
+  showTimeframe?: boolean;
 }
 
 export default function PortfolioChart({ 
@@ -20,16 +21,18 @@ export default function PortfolioChart({
   totalValue, 
   totalGain, 
   percentageGain 
+  , showTimeframe = true
 }: PortfolioChartProps) {
   const [timeframe, setTimeframe] = useState('1M');
   
   const formatCurrency = (amount: number) => {
+    const safe = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount / 1000000);
+    }).format(safe);
   };
 
   const timeframes = ['24H', '1W', '1M', '3M', '1Y', 'ALL'];
@@ -80,9 +83,10 @@ export default function PortfolioChart({
     const width = 600;
     const height = 250;
     const padding = 20;
+    const denom = Math.max(1, currentData.length - 1);
     
     const points = currentData.map((point, index) => {
-      const x = padding + (index / (currentData.length - 1)) * (width - padding * 2);
+      const x = padding + (index / denom) * (width - padding * 2);
       const y = height - padding - ((point.value - minValue) / valueRange) * (height - padding * 2);
       return `${x},${y}`;
     }).join(' L');
@@ -94,9 +98,10 @@ export default function PortfolioChart({
     const width = 600;
     const height = 250;
     const padding = 20;
+    const denom = Math.max(1, currentData.length - 1);
     
     const points = currentData.map((point, index) => {
-      const x = padding + (index / (currentData.length - 1)) * (width - padding * 2);
+      const x = padding + (index / denom) * (width - padding * 2);
       const y = height - padding - ((point.value - minValue) / valueRange) * (height - padding * 2);
       return `${x},${y}`;
     }).join(' L');
@@ -131,23 +136,25 @@ export default function PortfolioChart({
         </div>
         
         {/* Timeframe Selector - Mobile responsive */}
-        <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
-          <div className="flex bg-gray-100 rounded-lg p-1 w-full sm:w-auto overflow-x-auto">
-            {timeframes.map((tf) => (
-              <button
-                key={tf}
-                onClick={() => setTimeframe(tf)}
-                className={`px-2 md:px-3 py-1 rounded-md text-xs md:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                  timeframe === tf
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
+        {showTimeframe && (
+          <div className="order-1 lg:order-2 flex justify-center lg:justify-end">
+            <div className="flex bg-gray-100 rounded-lg p-1 w-full sm:w-auto overflow-x-auto">
+              {timeframes.map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setTimeframe(tf)}
+                  className={`px-2 md:px-3 py-1 rounded-md text-xs md:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                    timeframe === tf
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {tf}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Chart - Mobile responsive */}
