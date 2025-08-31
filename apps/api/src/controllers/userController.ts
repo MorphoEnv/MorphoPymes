@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { UserService, CreateUserData } from '../services/userService';
+import { MinioService } from '../services/minioService';
 
 export class UserController {
   /**
@@ -179,6 +180,42 @@ export class UserController {
         success: false,
         message: 'Error interno del servidor'
       });
+    }
+  }
+
+  /**
+   * POST /api/users/profile/:walletAddress/photo
+   * Subir foto de perfil a MinIO y actualizar usuario
+   */
+  static async uploadProfileImage(req: Request, res: Response) {
+    try {
+      const { walletAddress } = req.params;
+      if (!walletAddress) {
+        return res.status(400).json({ success: false, message: 'Wallet address es requerida' });
+      }
+
+  const uploadedFile = (req as any).file as any | undefined;
+      if (!uploadedFile || !uploadedFile.buffer) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      const file = uploadedFile as any;
+      const ext = (file.originalname || '').split('.').pop() || 'jpg';
+  const uniqueId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  const objectName = `profiles/${walletAddress.toLowerCase()}/${uniqueId}.${ext}`;
+
+  const url = await MinioService.uploadBuffer(file.buffer, objectName, file.mimetype);
+
+      // Update user profileImage
+      const user = await UserService.updateUser(walletAddress, { profileImage: url } as any);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+      }
+
+      res.json({ success: true, message: 'Foto subida', data: { url, user } });
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      res.status(500).json({ success: false, message: 'Error interno' });
     }
   }
 

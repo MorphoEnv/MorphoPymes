@@ -138,14 +138,36 @@ export default function Account() {
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setTempData({...tempData, profileImage: result});
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    // Optimistic preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setTempData({...tempData, profileImage: result});
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to backend
+    (async () => {
+      if (!user?.walletAddress || !token) return;
+      try {
+        setIsLoading(true);
+        const resp = await apiService.uploadProfileImage(user.walletAddress, file, token);
+        if (resp.success && resp.data?.url) {
+          setTempData((prev) => ({ ...prev, profileImage: resp.data!.url }));
+          setSuccess('Foto subida exitosamente');
+          setTimeout(() => setSuccess(''), 3000);
+        } else {
+          setError(resp.message || 'Error al subir la imagen');
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
+        setError('Error al subir la imagen');
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   };
 
   return (

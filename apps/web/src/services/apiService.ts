@@ -149,6 +149,31 @@ class ApiService {
     return this.makeRequest<{ exists: boolean; walletAddress: string }>(`/api/users/check/${walletAddress}`);
   }
 
+  // Subir imagen de perfil (multipart/form-data)
+  async uploadProfileImage(walletAddress: string, file: File, token?: string): Promise<ApiResponse<{ url: string; user?: User }>> {
+    try {
+  const form = new FormData();
+  // backend expects field name 'photo' (see userRoutes upload.single('photo'))
+  form.append('photo', file);
+
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      // Use fetch directly to allow multipart body
+      const response = await fetch(`${API_BASE_URL}/api/users/profile/${walletAddress}/photo`, {
+        method: 'POST',
+        headers,
+        body: form,
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error uploading profile image (frontend):', error);
+      return { success: false, message: 'Error uploading image' } as ApiResponse<any>;
+    }
+  }
+
   // Obtener lista de usuarios
   async getUsers(
     page: number = 1,
