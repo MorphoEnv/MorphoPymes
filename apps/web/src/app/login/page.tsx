@@ -149,7 +149,7 @@ export default function Login() {
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-6">
               <Image
-                src="/Logo.png"
+                src="/Logo1.png"
                 alt="MorphoPymes"
                 width={60}
                 height={60}

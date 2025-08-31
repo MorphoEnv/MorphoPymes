@@ -38,7 +38,7 @@ export default function Footer() {
             <Link href="/" className="group">
               <div className="w-16 h-16 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 group-hover:scale-105 overflow-hidden bg-white border border-gray-200">
                 <Image
-                  src="/Logo.png"
+                  src="/Logo1.png"
                   alt="MorphoPymes Logo"
                   width={56}
                   height={56}

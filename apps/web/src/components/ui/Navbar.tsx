@@ -68,7 +68,7 @@ export default function Navbar() {
               {/* Logo container */}
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 group-hover:scale-105 overflow-hidden bg-white/80">
                 <Image
-                  src="/Logo.png"
+                  src="/Logo1.png"
                   alt="MorphoPymes Logo"
                   width={40}
                   height={40}
