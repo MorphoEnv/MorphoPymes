@@ -43,6 +43,11 @@ export interface IProject extends Document {
   statusMessage?: string;
   refunded?: boolean;
   refundedAt?: Date;
+  // Blockchain integration fields
+  companyId?: string;
+  campaignId?: string;
+  blockchainTxHash?: string;
+  onChain?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -215,6 +220,23 @@ const ProjectSchema: Schema = new Schema({
   lastUpdate: {
     type: Date,
     default: Date.now
+  },
+  // Blockchain integration fields
+  companyId: {
+    type: String,
+    trim: true
+  },
+  campaignId: {
+    type: String,
+    trim: true
+  },
+  blockchainTxHash: {
+    type: String,
+    trim: true
+  },
+  onChain: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,

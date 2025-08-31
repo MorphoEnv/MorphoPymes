@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-   "scripts": {
+  "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint"
@@ -11,5 +11,14 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.15.0"
+  "packageManager": "pnpm@10.15.0",
+  "dependencies": {
+    "@thirdweb-dev/chains": "^0.1.120",
+    "@thirdweb-dev/sdk": "^4.0.99",
+    "dotenv": "^17.2.1",
+    "next": "^15.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0"
+  }
 }
