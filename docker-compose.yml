@@ -37,7 +37,21 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+
 
 networks:
   default:
     name: morpho_net
+volumes:
+  minio_data:
