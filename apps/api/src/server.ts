@@ -2,12 +2,18 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { userRoutes } from "./routes/userRoutes";
+import { authRoutes } from "./routes/authRoutes";
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Rutas
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 
 app.get("/", (_req, res) => {
   res.send("MorphoPymes API is running");
