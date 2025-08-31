@@ -36,6 +36,7 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         uint256 registrationDate;
         bool isRegistered;
         address owner;
+        address companyAddress;
     }
 
     /// @dev Campaign data structure
@@ -62,6 +63,9 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     /// @dev Mapping from owner address to array of company IDs
     mapping(address => uint256[]) public ownerCompanies;
     
+    /// @dev Mapping from company address to company ID
+    mapping(address => uint256) public companyAddressToId;
+    
     /// @dev Mapping from campaign ID to Campaign data
     mapping(uint256 => Campaign) public campaigns;
     
@@ -77,6 +81,7 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     event CampaignGoalReached(uint256 indexed campaignId, uint256 totalRaised);
     event ReturnsDistributed(uint256 indexed campaignId, address indexed owner, uint256 totalAmount);
     event InvestorWithdrew(uint256 indexed campaignId, address indexed investor, uint256 amount);
+    event PaymentToOwner(address indexed sender, uint256 amount);
 
     /**
      * @dev Constructor to initialize the contract with MoPy token address
@@ -97,15 +102,25 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         
         uint256 companyId = nextCompanyId++;
         
+        // Generate unique address for company using CREATE2-like deterministic calculation
+        address companyAddress = address(uint160(uint256(keccak256(abi.encodePacked(
+            address(this),
+            companyId,
+            _companyName,
+            msg.sender
+        )))));
+        
         companies[companyId] = Company({
             companyId: companyId,
             companyName: _companyName,
             registrationDate: block.timestamp,
             isRegistered: true,
-            owner: msg.sender
+            owner: msg.sender,
+            companyAddress: companyAddress
         });
         
         ownerCompanies[msg.sender].push(companyId);
+        companyAddressToId[companyAddress] = companyId;
         
         emit CompanyRegistered(companyId, msg.sender, _companyName, block.timestamp);
         return companyId;
@@ -351,6 +366,20 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Allows anyone to send ETH directly to contract owner
+     * @notice Send ETH with this function to pay the contract owner
+     */
+    function payOwner() public payable nonReentrant {
+        require(msg.value > 0, "Must send ETH");
+        
+        address payable contractOwner = payable(owner());
+        (bool success, ) = contractOwner.call{value: msg.value}("");
+        require(success, "ETH transfer failed");
+        
+        emit PaymentToOwner(msg.sender, msg.value);
+    }
+
+    /**
      * @dev Returns campaign details
      * @param _campaignId The ID of the campaign
      * @return Campaign struct data
@@ -383,6 +412,17 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
      */
     function getNextCompanyId() public view returns (uint256) {
         return nextCompanyId;
+    }
+
+    /**
+     * @dev Returns company data by company address
+     * @param _companyAddress The unique address of the company
+     * @return The company data structure
+     */
+    function getCompanyByAddress(address _companyAddress) public view returns (Company memory) {
+        uint256 companyId = companyAddressToId[_companyAddress];
+        require(companyId > 0, "Company not found");
+        return companies[companyId];
     }
 
     /**

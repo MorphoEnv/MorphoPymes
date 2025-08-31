@@ -3,9 +3,10 @@
 ## Overview
 The CompanyAndCampaignManager contract is the core business logic contract for the MorphoPymes ecosystem. It manages company registrations, crowdfunding campaigns, investments, and returns with penalty mechanisms.
 
-## Contract Address
+## Contract Addresses
 - **Network**: Base Sepolia Testnet
-- **Latest Deployment**: `0x17aB704305a43915a0261EbF3b154ee6B568F6f5` (check latest in deployed_addresses.json)
+- **MoPy Token**: `0xf3DD33ddb68A08b5c520D8cc3BB0A72f08431551`
+- **CompanyAndCampaignManager**: `0xC72dA51bBC839C460E11fA16F93AE6E3Efa0d63d`
 
 ## Dependencies
 - **MoPy Token Contract**: ERC-20 token for rewards (currently disabled in invest function)
@@ -27,6 +28,7 @@ struct Company {
     uint256 registrationDate;   // Unix timestamp of registration
     bool isRegistered;          // Registration status
     address owner;              // Company owner address
+    address companyAddress;     // Unique generated address for the company
 }
 ```
 
@@ -68,13 +70,29 @@ Registers a new company in the system.
 ---
 
 #### `getCompany(uint256 _companyId) → Company memory`
-Retrieves company information.
+Retrieves company information by company ID.
 
 **Parameters:**
 - `_companyId`: Company ID to query
 
 **Returns:**
 - `Company`: Complete company data structure
+
+**Access:** Public view function
+
+---
+
+#### `getCompanyByAddress(address _companyAddress) → Company memory`
+Retrieves company information by unique company address.
+
+**Parameters:**
+- `_companyAddress`: Unique company address to query
+
+**Returns:**
+- `Company`: Complete company data structure
+
+**Requirements:**
+- Company must exist (companyId > 0)
 
 **Access:** Public view function
 
@@ -350,9 +368,337 @@ event InvestorWithdrew(uint256 indexed campaignId, address indexed investor, uin
 - Use `view` functions to check requirements before making transactions
 - Batch operations when possible to save gas
 
-## Integration Notes for Backend
+## Backend Integration Guide
+
+### Contract Interaction Setup
+```javascript
+import { ethers } from 'ethers';
+
+// Contract addresses
+const MANAGER_ADDRESS = '0xC72dA51bBC839C460E11fA16F93AE6E3Efa0d63d';
+const MOPY_ADDRESS = '0xf3DD33ddb68A08b5c520D8cc3BB0A72f08431551';
+
+// Initialize contracts
+const provider = new ethers.JsonRpcProvider('https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY');
+const managerContract = new ethers.Contract(MANAGER_ADDRESS, managerABI, provider);
+const mopyContract = new ethers.Contract(MOPY_ADDRESS, mopyABI, provider);
+```
+
+### Company Management Operations
+
+#### Register New Company
+```javascript
+async function registerCompany(companyName, signerWallet) {
+    const contract = managerContract.connect(signerWallet);
+    const tx = await contract.registerCompany(companyName);
+    const receipt = await tx.wait();
+    
+    // Extract company ID from events
+    const event = receipt.logs.find(log => 
+        log.topics[0] === contract.interface.getEvent('CompanyRegistered').topicHash
+    );
+    const companyId = parseInt(event.topics[1], 16);
+    
+    return { companyId, txHash: receipt.hash };
+}
+```
+
+#### Get Company by ID
+```javascript
+async function getCompanyById(companyId) {
+    const company = await managerContract.companies(companyId);
+    return {
+        companyId: company.companyId.toString(),
+        companyName: company.companyName,
+        registrationDate: new Date(Number(company.registrationDate) * 1000),
+        isRegistered: company.isRegistered,
+        owner: company.owner,
+        companyAddress: company.companyAddress
+    };
+}
+```
+
+#### Get Company by Unique Address
+```javascript
+async function getCompanyByAddress(companyAddress) {
+    try {
+        const company = await managerContract.getCompanyByAddress(companyAddress);
+        return {
+            companyId: company.companyId.toString(),
+            companyName: company.companyName,
+            registrationDate: new Date(Number(company.registrationDate) * 1000),
+            isRegistered: company.isRegistered,
+            owner: company.owner,
+            companyAddress: company.companyAddress
+        };
+    } catch (error) {
+        if (error.message.includes("Company not found")) {
+            return null;
+        }
+        throw error;
+    }
+}
+```
+
+#### Get All Companies by Owner
+```javascript
+async function getCompaniesByOwner(ownerAddress) {
+    const companyIds = await managerContract.getOwnerCompanies(ownerAddress);
+    const companies = [];
+    
+    for (const id of companyIds) {
+        const company = await getCompanyById(id.toString());
+        companies.push(company);
+    }
+    
+    return companies;
+}
+```
+
+### Campaign Management Operations
+
+#### Create Campaign
+```javascript
+async function createCampaign(campaignData, signerWallet) {
+    const contract = managerContract.connect(signerWallet);
+    
+    const tx = await contract.createCampaign(
+        campaignData.companyId,
+        ethers.parseEther(campaignData.goalAmount.toString()),
+        ethers.parseEther(campaignData.minInvestment.toString()),
+        campaignData.returnPercentage * 100, // Convert to basis points
+        campaignData.dailyPenaltyPercentage * 100,
+        campaignData.paymentDaysAfterGoal
+    );
+    
+    const receipt = await tx.wait();
+    
+    // Extract campaign ID from events
+    const event = receipt.logs.find(log => 
+        log.topics[0] === contract.interface.getEvent('CampaignCreated').topicHash
+    );
+    const campaignId = parseInt(event.topics[1], 16);
+    
+    return { campaignId, txHash: receipt.hash };
+}
+```
+
+#### Get Campaign Details
+```javascript
+async function getCampaignDetails(campaignId) {
+    const campaign = await managerContract.campaigns(campaignId);
+    
+    return {
+        companyId: campaign.companyId.toString(),
+        ownerAddress: campaign.ownerAddress,
+        goalAmount: ethers.formatEther(campaign.goalAmount),
+        minInvestment: ethers.formatEther(campaign.minInvestment),
+        returnPercentage: Number(campaign.returnPercentage) / 100, // Convert from basis points
+        dailyPenaltyPercentage: Number(campaign.dailyPenaltyPercentage) / 100,
+        paymentDaysAfterGoal: Number(campaign.paymentDaysAfterGoal),
+        paymentDeadline: campaign.paymentDeadline > 0 ? 
+            new Date(Number(campaign.paymentDeadline) * 1000) : null,
+        totalRaised: ethers.formatEther(campaign.totalRaised),
+        totalPenaltiesPaid: ethers.formatEther(campaign.totalPenaltiesPaid),
+        active: campaign.active,
+        goalReached: campaign.goalReached,
+        fundsDistributed: campaign.fundsDistributed,
+        returnsDistributed: campaign.returnsDistributed
+    };
+}
+```
+
+### Investment Operations
+
+#### Make Investment
+```javascript
+async function investInCampaign(campaignId, amountEth, signerWallet) {
+    const contract = managerContract.connect(signerWallet);
+    
+    const tx = await contract.invest(campaignId, {
+        value: ethers.parseEther(amountEth.toString())
+    });
+    
+    return await tx.wait();
+}
+```
+
+#### Get Investment Amount
+```javascript
+async function getInvestmentAmount(campaignId, investorAddress) {
+    const amount = await managerContract.getInvestment(campaignId, investorAddress);
+    return ethers.formatEther(amount);
+}
+```
+
+#### Calculate Required Payment
+```javascript
+async function getRequiredPayment(campaignId) {
+    const amount = await managerContract.getRequiredPayment(campaignId);
+    return ethers.formatEther(amount);
+}
+```
+
+### Fund Distribution Operations
+
+#### Distribute Funds to Entrepreneur
+```javascript
+async function distributeFunds(campaignId, signerWallet) {
+    const contract = managerContract.connect(signerWallet);
+    const tx = await contract.distributeFunds(campaignId);
+    return await tx.wait();
+}
+```
+
+#### Return Investment with Interest/Penalties
+```javascript
+async function returnInvestment(campaignId, signerWallet) {
+    const contract = managerContract.connect(signerWallet);
+    
+    // Get required payment amount
+    const requiredAmount = await contract.getRequiredPayment(campaignId);
+    
+    const tx = await contract.returnInvestment(campaignId, {
+        value: requiredAmount
+    });
+    
+    return await tx.wait();
+}
+```
+
+#### Withdraw Returns (Investor)
+```javascript
+async function withdrawReturns(campaignId, signerWallet) {
+    const contract = managerContract.connect(signerWallet);
+    const tx = await contract.withdrawReturns(campaignId);
+    return await tx.wait();
+}
+```
+
+### Event Monitoring
+
+#### Listen to All Contract Events
+```javascript
+// Company events
+managerContract.on("CompanyRegistered", (companyId, owner, companyName, timestamp) => {
+    console.log(`Company ${companyName} registered with ID ${companyId}`);
+});
+
+// Campaign events
+managerContract.on("CampaignCreated", (campaignId, companyId, owner, goalAmount) => {
+    console.log(`Campaign ${campaignId} created for ${ethers.formatEther(goalAmount)} ETH`);
+});
+
+managerContract.on("CampaignGoalReached", (campaignId, totalRaised) => {
+    console.log(`Campaign ${campaignId} reached goal with ${ethers.formatEther(totalRaised)} ETH`);
+});
+
+// Investment events
+managerContract.on("InvestmentReceived", (campaignId, investor, amount, tokensReceived) => {
+    console.log(`Investment of ${ethers.formatEther(amount)} ETH received for campaign ${campaignId}`);
+});
+
+// Distribution events
+managerContract.on("FundsDistributed", (campaignId, owner, amount) => {
+    console.log(`Funds distributed: ${ethers.formatEther(amount)} ETH to ${owner}`);
+});
+
+managerContract.on("ReturnsDistributed", (campaignId, owner, totalAmount) => {
+    console.log(`Returns paid: ${ethers.formatEther(totalAmount)} ETH for campaign ${campaignId}`);
+});
+```
+
+### Error Handling
+
+#### Common Error Patterns
+```javascript
+async function handleContractCall(contractFunction) {
+    try {
+        return await contractFunction();
+    } catch (error) {
+        // Parse contract revert reasons
+        if (error.reason) {
+            switch (error.reason) {
+                case "Company name cannot be empty":
+                    throw new Error("INVALID_COMPANY_NAME");
+                case "Campaign is not active":
+                    throw new Error("CAMPAIGN_INACTIVE");
+                case "Investment amount is below the minimum":
+                    throw new Error("INVESTMENT_TOO_LOW");
+                case "Campaign goal has already been reached":
+                    throw new Error("GOAL_ALREADY_REACHED");
+                case "Only campaign owner can withdraw":
+                    throw new Error("UNAUTHORIZED_WITHDRAWAL");
+                case "Company not found":
+                    throw new Error("COMPANY_NOT_FOUND");
+                default:
+                    throw new Error(`CONTRACT_ERROR: ${error.reason}`);
+            }
+        }
+        throw error;
+    }
+}
+```
+
+### Gas Estimation
+```javascript
+// Estimate gas before transaction
+async function estimateGasForInvestment(campaignId, amountEth, signerWallet) {
+    const contract = managerContract.connect(signerWallet);
+    
+    try {
+        const gasEstimate = await contract.invest.estimateGas(campaignId, {
+            value: ethers.parseEther(amountEth.toString())
+        });
+        
+        return gasEstimate.toString();
+    } catch (error) {
+        throw new Error(`Gas estimation failed: ${error.reason || error.message}`);
+    }
+}
+```
+
+### Data Formatting Helpers
+
+#### Format Campaign Data for Frontend
+```javascript
+function formatCampaignForFrontend(rawCampaign) {
+    return {
+        id: rawCampaign.companyId.toString(),
+        owner: rawCampaign.ownerAddress,
+        goal: {
+            amount: parseFloat(ethers.formatEther(rawCampaign.goalAmount)),
+            raised: parseFloat(ethers.formatEther(rawCampaign.totalRaised)),
+            percentage: (Number(rawCampaign.totalRaised) * 100) / Number(rawCampaign.goalAmount)
+        },
+        investment: {
+            minimum: parseFloat(ethers.formatEther(rawCampaign.minInvestment)),
+            returnRate: Number(rawCampaign.returnPercentage) / 100
+        },
+        penalties: {
+            dailyRate: Number(rawCampaign.dailyPenaltyPercentage) / 100,
+            totalPaid: parseFloat(ethers.formatEther(rawCampaign.totalPenaltiesPaid))
+        },
+        timeline: {
+            paymentDays: Number(rawCampaign.paymentDaysAfterGoal),
+            deadline: rawCampaign.paymentDeadline > 0 ? 
+                new Date(Number(rawCampaign.paymentDeadline) * 1000) : null
+        },
+        status: {
+            active: rawCampaign.active,
+            goalReached: rawCampaign.goalReached,
+            fundsDistributed: rawCampaign.fundsDistributed,
+            returnsDistributed: rawCampaign.returnsDistributed
+        }
+    };
+}
+```
+
+## Integration Notes
 - Always check campaign status with `getCampaign()` before operations
 - Use `getRequiredPayment()` to show entrepreneurs exact payment amounts
 - Monitor events for real-time updates
 - Handle penalty calculations for frontend display
 - Implement proper error handling for all revert conditions
+- Company addresses are deterministically generated and unique per company
+- Use `getCompanyByAddress()` for reverse lookups from company address to company data
