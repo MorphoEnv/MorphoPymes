@@ -638,8 +638,8 @@ export default function Account() {
                                 to: dest,
                                 value: valueWei,
                               } as any));
-                              // tx.transactionHash should be present
-                              setWithdrawTxHash((tx && tx.transactionHash) || tx?.hash || '');
+                              // Prefer transactionHash; fall back to legacy .hash if present
+                              setWithdrawTxHash(tx?.transactionHash ?? (tx as any)?.hash ?? '');
                               setWithdrawError('');
                             } catch (err: any) {
                               console.error('Withdraw error', err);
