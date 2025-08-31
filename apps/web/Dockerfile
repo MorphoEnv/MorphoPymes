@@ -32,10 +32,10 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 
 # Copy built assets and node_modules from builder
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/apps/web/.next ./.next
+COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/apps/web/package.json ./package.json
 
 EXPOSE 3000
 CMD ["pnpm", "start"]
