@@ -1,52 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/apiService';
 import { useRouter } from 'next/navigation';
 
-// Mock data para proyectos del usuario
-const userProjects = [
-  {
-    id: 1,
-    title: 'EcoTech Solutions',
-    status: 'active',
-    funding: {
-      target: 800,
-      raised: 520,
-      percentage: 65,
-      investors: 28
-    },
-    sponsored: true,
-    lastUpdate: '2024-08-25',
-    views: 1250,
-    image: '/Figura1.png'
-  },
-  {
-    id: 2,
-    title: 'Green Energy App',
-    status: 'draft',
-    funding: {
-      target: 600,
-      raised: 0,
-      percentage: 0,
-      investors: 0
-    },
-    sponsored: false,
-    lastUpdate: '2024-08-28',
-    views: 45,
-    image: '/Figura1.png'
-  }
-];
-
-const stats = {
-  totalRaised: 520,
-  totalInvestors: 28,
-  totalViews: 1295,
-  activeProjects: 1
-};
+// We'll compute dashboard stats from the fetched `projects` for the current user
+// (totalRaised, totalInvestors, totalViews, activeProjects)
 
 export default function Dashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -62,7 +24,16 @@ export default function Dashboard() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [loadingProjects, setLoadingProjects] = useState(false);
-  const [projects, setProjects] = useState<any[]>(userProjects);
+  const [projects, setProjects] = useState<any[]>([]);
+
+  // derive dashboard stats from projects
+  const stats = useMemo(() => {
+    const totalRaised = projects.reduce((acc, p) => acc + (p?.funding?.raised || 0), 0);
+    const totalInvestors = projects.reduce((acc, p) => acc + (p?.funding?.investors || 0), 0);
+    const totalViews = projects.reduce((acc, p) => acc + (p?.views || 0), 0);
+    const activeProjects = projects.filter((p) => (p?.status || '').toLowerCase() === 'active').length;
+    return { totalRaised, totalInvestors, totalViews, activeProjects };
+  }, [projects]);
 
   useEffect(() => {
     (async () => {
@@ -259,7 +230,7 @@ export default function Dashboard() {
               </div>
               
               <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-2">
-                Welcome back, <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">María</span>
+                Welcome back, <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">{user?.firstName || (user?.walletAddress ? `${user.walletAddress.slice(0,6)}...${user.walletAddress.slice(-4)}` : 'Creator')}</span>
               </h1>
               
               <p className="text-gray-600 leading-relaxed">
@@ -365,7 +336,7 @@ export default function Dashboard() {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  Analytics
+                  Analytics (coming soon)
                 </button>
                 <button
                   onClick={() => setActiveTab('marketing')}

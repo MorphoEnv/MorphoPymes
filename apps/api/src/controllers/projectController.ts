@@ -25,6 +25,34 @@ export class ProjectController {
       res.status(400).json({ success: false, message: (error as Error).message || 'Error creating project' });
     }
   }
+
+  static async getById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const project = await ProjectService.getById(id);
+      if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+      res.json({ success: true, data: { project } });
+    } catch (error) {
+      console.error('Error fetching project by id:', error);
+      res.status(500).json({ success: false, message: 'Error fetching project' });
+    }
+  }
+
+  static async update(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+  const data = req.body;
+  // Expect auth middleware to attach user id on req.user or req.userId
+  // support both shapes
+  const requesterId = (req as any).user?._id || (req as any).userId || (req as any).user?.id;
+  const project = await ProjectService.updateProject(id, data, requesterId);
+      if (!project) return res.status(404).json({ success: false, message: 'Project not found or not updated' });
+      res.json({ success: true, data: { project } });
+    } catch (error) {
+      console.error('Error updating project:', error);
+      res.status(400).json({ success: false, message: (error as Error).message || 'Error updating project' });
+    }
+  }
 }
 
 export default ProjectController;

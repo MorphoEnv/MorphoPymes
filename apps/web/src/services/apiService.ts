@@ -228,6 +228,18 @@ class ApiService {
       return { success: false, message: 'Error uploading images' } as any;
     }
   }
+
+  async getProjectById(id: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return this.makeRequest<{ project: any }>(`/api/projects/${id}`, { method: 'GET', headers });
+  }
+
+  async updateProject(id: string, payload: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return this.makeRequest<{ project: any }>(`/api/projects/${id}`, { method: 'PUT', headers, body: JSON.stringify(payload) });
+  }
 }
 
 // Exportar una instancia singleton

@@ -1,124 +1,50 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-
-// Mock data detallado del proyecto
-const getProjectDetails = (id: string) => {
-  const projects: { [key: string]: any } = {
-    '1': {
-      id: 1,
-      title: 'EcoTech Solutions',
-      shortDescription: 'Soluciones tecnológicas sostenibles para empresas que buscan reducir su huella de carbono.',
-      fullDescription: 'EcoTech Solutions desarrolla tecnologías innovadoras para ayudar a las empresas a reducir significativamente su impacto ambiental. Nuestro enfoque integral incluye auditorías energéticas, implementación de sistemas de energía renovable, y desarrollo de software para monitoreo de emisiones en tiempo real.',
-      entrepreneur: {
-        name: 'María González',
-        avatar: '/default-avatar.svg',
-        verified: true,
-        bio: 'Ingeniera Ambiental con 10 años de experiencia en sostenibilidad corporativa. MBA en Gestión de Empresas.',
-        linkedin: '#',
-        experience: '10+ años en sostenibilidad'
-      },
-      funding: {
-        target: 800,
-        raised: 520,
-        percentage: 65,
-        investors: 28,
-        minimumInvestment: 10,
-        roi: '15-25% expected'
-      },
-      milestones: [
-        {
-          title: 'Desarrollo del MVP',
-          description: 'Creación del software base de monitoreo',
-          target: 200,
-          completed: true,
-          date: 'Completed - March 2024'
-        },
-        {
-          title: 'Primeros clientes piloto',
-          description: '5 empresas usando la plataforma',
-          target: 400,
-          completed: true,
-          date: 'Completed - June 2024'
-        },
-        {
-          title: 'Expansión regional',
-          description: 'Llegar a 20 empresas en 3 países',
-          target: 600,
-          completed: false,
-          date: 'Target: December 2024'
-        },
-        {
-          title: 'Escalamiento',
-          description: 'Equipo de 15 personas y 100+ clientes',
-          target: 800,
-          completed: false,
-          date: 'Target: June 2025'
-        }
-      ],
-      category: 'Technology',
-      location: 'Medellín, Colombia',
-      featured: true,
-      images: ['/Figura1.png', '/Figura1.png', '/Figura1.png'],
-      businessModel: 'SaaS con modelo de suscripción mensual. Revenue share del 3% en ahorros generados.',
-      marketSize: '$2.1B mercado de sostenibilidad empresarial en LatAm',
-      competition: 'Competidores principales: EcoTrack, GreenTech Analytics',
-      financials: {
-        revenue: '$12,000 MRR',
-        growth: '+35% monthly',
-        customers: 15
-      }
-    },
-    '2': {
-      id: 2,
-      title: 'Café Premium Local',
-      shortDescription: 'Producción y distribución de café de alta calidad directamente desde fincas colombianas.',
-      fullDescription: 'Conectamos directamente a los consumidores con los mejores productores de café de Colombia, eliminando intermediarios y garantizando precios justos para los agricultores mientras ofrecemos café de calidad superior a nuestros clientes.',
-      entrepreneur: {
-        name: 'Carlos Rodríguez',
-        avatar: '/default-avatar.svg',
-        verified: true,
-        bio: 'Productor de café de tercera generación. Especialista en comercio directo y agricultura sostenible.',
-        linkedin: '#',
-        experience: '20+ años en agricultura'
-      },
-      funding: {
-        target: 500,
-        raised: 375,
-        percentage: 75,
-        investors: 15,
-        minimumInvestment: 5,
-        roi: '20-30% expected'
-      },
-      milestones: [],
-      category: 'Food & Beverage',
-      location: 'Bogotá, Colombia',
-      featured: false,
-      images: ['/Figura1.png', '/Figura1.png'],
-      businessModel: 'Venta directa B2C y B2B. Suscripciones mensuales y ventas por mayor.',
-      marketSize: '$500M mercado de café premium en Colombia',
-      competition: 'Competencia: Juan Valdez, Oma Coffee',
-      financials: {
-        revenue: '$8,500 monthly',
-        growth: '+20% monthly',
-        customers: 120
-      }
-    }
-  };
-  
-  return projects[id] || null;
-};
+import { apiService } from '@/services/apiService';
 
 export default function ProjectDetail() {
   const params = useParams();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [investmentAmount, setInvestmentAmount] = useState('');
   const [showInvestModal, setShowInvestModal] = useState(false);
-  
-  const project = getProjectDetails(params.id as string);
+  const [project, setProject] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const id = params.id as string;
+      if (!id) return;
+      try {
+        const res = await apiService.getProjectById(id);
+        if (res.success && res.data?.project) {
+          setProject(res.data.project);
+        }
+      } catch (err) {
+        console.error('Error fetching project from API, falling back to mock', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [params.id]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100/60 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Project not found</h1>
+          <Link href="/invest" className="text-blue-600 hover:text-blue-700">
+            ← Back to investments
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -141,6 +67,12 @@ export default function ProjectDetail() {
     }).format(amount);
   };
 
+  // Safe accessors for optional financials
+  const revenueValue = project?.financials?.revenue ?? 0;
+  const growthValue = project?.financials?.growth ?? 0;
+  const customersValue = project?.financials?.customers ?? 0;
+  const fundingExpectedROI = project?.funding?.expectedROI ?? project?.funding?.roi ?? 'N/A';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100/60">
       {/* Header */}
@@ -162,12 +94,16 @@ export default function ProjectDetail() {
               {/* Project Images */}
               <div className="bg-white/90 backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl border border-blue-200/50">
                 <div className="relative h-80">
-                  <Image
-                    src={project.images[selectedImageIndex]}
-                    alt={project.title}
-                    fill
-                    className="object-cover"
-                  />
+                  {project.images && project.images[selectedImageIndex] ? (
+                    <Image
+                      src={project.images[selectedImageIndex]}
+                      alt={project.title}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <img src="/default-image.png" alt="placeholder" className="w-full h-full object-cover" />
+                  )}
                   {project.featured && (
                     <div className="absolute top-4 left-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
                       Featured Project
@@ -240,15 +176,15 @@ export default function ProjectDetail() {
                     <h4 className="font-semibold text-gray-900 mb-3">Current Performance</h4>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{project.financials.revenue}</div>
+                          <div className="text-2xl font-bold text-blue-600">{formatCurrency(Number(revenueValue || 0))}</div>
                         <div className="text-sm text-gray-600">Monthly Revenue</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">{project.financials.growth}</div>
+                        <div className="text-2xl font-bold text-green-600">{String(growthValue)}%</div>
                         <div className="text-sm text-gray-600">Growth Rate</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-600">{project.financials.customers}</div>
+                        <div className="text-2xl font-bold text-purple-600">{String(customersValue)}</div>
                         <div className="text-sm text-gray-600">Active Customers</div>
                       </div>
                     </div>
@@ -299,37 +235,54 @@ export default function ProjectDetail() {
                 {/* Entrepreneur Profile */}
                 <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-xl border border-blue-200/50">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Entrepreneur</h3>
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="relative">
-                      <Image
-                        src={project.entrepreneur.avatar}
-                        alt={project.entrepreneur.name}
-                        width={60}
-                        height={60}
-                        className="rounded-full border-2 border-blue-200/50"
-                      />
-                      {project.entrepreneur.verified && (
-                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
+                  {/** Safely handle missing entrepreneur data */}
+                  {(() => {
+                    const ent = project.entrepreneur || project.entrepreneur_details || {} as any;
+                    // Prefer a direct `name`, otherwise compose from firstName/lastName, otherwise show walletAddress as last resort
+                    const name = ent.name || ((ent.firstName || ent.lastName) ? `${ent.firstName || ''} ${ent.lastName || ''}`.trim() : (ent.walletAddress || 'Unknown Entrepreneur'));
+                    // avatar may be stored as profileImage on the user model
+                    const avatar = ent.avatar || ent.profileImage || '/default-avatar.svg';
+                    const verified = !!ent.verified;
+                    const experience = ent.experience || '';
+                    const bio = ent.bio || ent.description || '';
+
+                    return (
+                      <>
+                        <div className="flex items-center space-x-3 mb-4">
+                          <div className="relative">
+                            <Image
+                              src={avatar}
+                              alt={name}
+                              width={60}
+                              height={60}
+                              className="rounded-full border-2 border-blue-200/50"
+                              // allow unoptimized external src if necessary (Next will accept string)
+                            />
+                            {verified && (
+                              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h4 className="font-semibold text-gray-900">{name}</h4>
+                              {verified && (
+                                <span className="text-green-600 text-xs font-medium">Verified</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">{experience}</p>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="font-semibold text-gray-900">{project.entrepreneur.name}</h4>
-                        {project.entrepreneur.verified && (
-                          <span className="text-green-600 text-xs font-medium">Verified</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-500">{project.entrepreneur.experience}</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-4">{project.entrepreneur.bio}</p>
-                  <button className="w-full px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium">
-                    View Full Profile
-                  </button>
+                        <p className="text-gray-600 text-sm mb-4">{bio}</p>
+                        <button className="w-full px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium">
+                          View Full Profile
+                        </button>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Investment Panel */}
@@ -366,7 +319,7 @@ export default function ProjectDetail() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Expected ROI:</span>
-                      <span className="font-medium text-green-600">{project.funding.roi}</span>
+                      <span className="font-medium text-green-600">{fundingExpectedROI}</span>
                     </div>
                   </div>
 

@@ -27,6 +27,53 @@ export class ProjectService {
     return { projects, total, pages: Math.ceil(total / limit) };
   }
 
+  static async getById(id: string) {
+    // populate entrepreneur reference so frontend can render profile info
+    let project = await Project.findById(id).populate({ path: 'entrepreneur', select: 'firstName lastName profileImage verified bio experience walletAddress' });
+    if (!project) return null;
+
+    // If populate didn't attach a full entrepreneur object (edge cases), load it explicitly
+    const projObj: any = project.toObject ? project.toObject() : project;
+    if (!projObj.entrepreneur || typeof projObj.entrepreneur === 'string') {
+      try {
+        const user = await User.findById(project.entrepreneur).select('firstName lastName profileImage verified bio experience walletAddress');
+        if (user) {
+          projObj.entrepreneur = user.toObject ? user.toObject() : user;
+        }
+      } catch (err) {
+        // ignore lookup errors, return project as-is
+      }
+    }
+
+    return projObj;
+  }
+
+  static async updateProject(id: string, updateData: any, requesterId?: string) {
+    const project = await Project.findById(id);
+    if (!project) return null;
+
+    // If requesterId provided, ensure they own the project
+    if (requesterId) {
+      // project.entrepreneur is an ObjectId
+      const ownerId = project.entrepreneur?.toString();
+      if (ownerId !== String(requesterId)) {
+        throw new Error('Not authorized to update this project');
+      }
+    }
+
+    // Apply allowed updates
+    const allowed = ['title','shortDescription','fullDescription','category','location','funding','milestones','images','businessModel','marketSize','competition','status','featured','sponsored','contractAddress'];
+    for (const key of Object.keys(updateData)) {
+      if (allowed.includes(key)) {
+        // @ts-ignore
+        project[key] = updateData[key];
+      }
+    }
+
+    await project.save();
+    return project;
+  }
+
   static async createProject(data: CreateProjectData) {
     const user = await User.findOne({ walletAddress: data.entrepreneurWallet.toLowerCase() });
     if (!user) throw new Error('Entrepreneur user not found');
