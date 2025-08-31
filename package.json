@@ -11,8 +11,15 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "eslint-plugin-react-hooks": "5.2.0"
+  "packageManager": "pnpm@10.15.0",
+  "dependencies": {
+    "@thirdweb-dev/chains": "^0.1.120",
+    "@thirdweb-dev/sdk": "^4.0.99",
+    "dotenv": "^17.2.1",
+    "next": "^15.5.2"
   },
-  "packageManager": "pnpm@10.15.0"
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "eslint-plugin-react-hooks": "5.2.0"
+  }
 }

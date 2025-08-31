@@ -62,7 +62,7 @@ export class ProjectService {
     }
 
     // Apply allowed updates
-    const allowed = ['title','shortDescription','fullDescription','category','location','funding','milestones','images','businessModel','marketSize','competition','status','featured','sponsored','contractAddress'];
+    const allowed = ['title','shortDescription','fullDescription','category','location','funding','milestones','images','businessModel','marketSize','competition','status','featured','sponsored','contractAddress','companyId','campaignId','blockchainTxHash','onChain'];
     for (const key of Object.keys(updateData)) {
       if (allowed.includes(key)) {
         // @ts-ignore
@@ -126,6 +126,10 @@ export class ProjectService {
       status: (data as any).draft ? 'draft' : 'active',
       featured: false,
       sponsored: false,
+      companyId: (data as any).companyId,
+      campaignId: (data as any).campaignId,
+      blockchainTxHash: (data as any).blockchainTxHash,
+      onChain: (data as any).onChain || false,
     });
 
     await project.save();

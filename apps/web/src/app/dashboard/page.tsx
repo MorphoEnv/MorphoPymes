@@ -7,6 +7,8 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { apiService } from '@/services/apiService';
 import { useRouter } from 'next/navigation';
+import { blockchainService, Campaign } from '@/services/blockchainServices';
+import { currencyService } from '@/services/currencyService';
 
 // We'll compute dashboard stats from the fetched `projects` for the current user
 // (totalRaised, totalInvestors, totalViews, activeProjects)
@@ -16,16 +18,15 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('projects');
   const [projectImages, setProjectImages] = useState<string[]>([]);
   const [projectImageFiles, setProjectImageFiles] = useState<File[]>([]);
-  const [useMilestones, setUseMilestones] = useState(false);
-  const [milestones, setMilestones] = useState([
-    { title: '', description: '', target: '', completed: false }
-  ]);
 
   const { user, token } = useAuth();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
+  const [blockchainCampaigns, setBlockchainCampaigns] = useState<Campaign[]>([]);
+  const [userInvestments, setUserInvestments] = useState<any[]>([]);
+  const [loadingBlockchain, setLoadingBlockchain] = useState(false);
 
   // derive dashboard stats from projects
   const stats = useMemo(() => {
@@ -52,6 +53,28 @@ export default function Dashboard() {
       }
     })();
   }, [user?.walletAddress, token]);
+
+  // Load blockchain campaigns and investments
+  const refreshBlockchainData = async () => {
+    if (!user?.walletAddress) return;
+    setLoadingBlockchain(true);
+    try {
+      const [campaigns, investments] = await Promise.all([
+        blockchainService.getUserCampaigns(user.walletAddress),
+        blockchainService.getUserInvestments(user.walletAddress)
+      ]);
+      setBlockchainCampaigns(campaigns);
+      setUserInvestments(investments);
+    } catch (err) {
+      console.error('Error loading blockchain data:', err);
+    } finally {
+      setLoadingBlockchain(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshBlockchainData();
+  }, [user?.walletAddress]);
 
   // fetch categories for create modal
   useEffect(() => {
@@ -137,31 +160,26 @@ export default function Dashboard() {
   setProjectImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const addMilestone = () => {
-    setMilestones(prev => [...prev, { title: '', description: '', target: '', completed: false }]);
-  };
-
-  const removeMilestone = (index: number) => {
-    setMilestones(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateMilestone = (index: number, field: string, value: string) => {
-    setMilestones(prev => prev.map((milestone, i) => 
-      i === index ? { ...milestone, [field]: value } : milestone
-    ));
-  };
 
   const resetForm = () => {
+    setTitle('');
+    setShortDescription('');
+    setFullDescription('');
+    setFundingGoal('');
+    setMinInvestment('');
+    setLocation('');
+    setMarketSize('');
+    setExpectedROI('');
+    setPaymentDaysAfterGoal('');
     setProjectImages([]);
-    setUseMilestones(false);
-    setMilestones([{ title: '', description: '', target: '', completed: false }]);
+    setProjectImageFiles([]);
+    setPublishMessage(null);
   };
 
   // Create project form state
   const [title, setTitle] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [fullDescription, setFullDescription] = useState('');
-  const [repaymentDays, setRepaymentDays] = useState<number | ''>('');
   const [fundingGoal, setFundingGoal] = useState<number | ''>('');
   const [category, setCategory] = useState('');
   const [categories, setCategories] = useState<Array<{ label: string; value: string }>>([]);
@@ -170,7 +188,12 @@ export default function Dashboard() {
   const [location, setLocation] = useState('');
   const [marketSize, setMarketSize] = useState('');
 
-  const createProjectHandler = async (saveAsDraft = false) => {
+  const [expectedROI, setExpectedROI] = useState('');
+  const [paymentDaysAfterGoal, setPaymentDaysAfterGoal] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
+
+  const createProjectHandler = async (saveAsDraft = false, publishToBlockchain = false) => {
     if (!user?.walletAddress) return;
     // client-side validation for required fields only when publishing
     if (!saveAsDraft && (!title || !shortDescription || !fullDescription || !location || !fundingGoal)) {
@@ -197,36 +220,96 @@ export default function Dashboard() {
         }
       }
 
-      const payload = {
+      // Convert USD amounts to wei for blockchain storage
+      let fundingGoalWei = '0';
+      let minInvestmentWei = '0';
+      
+      if (publishToBlockchain && fundingGoal && minInvestment) {
+        fundingGoalWei = (await currencyService.usdToWei(Number(fundingGoal))).toString();
+        minInvestmentWei = (await currencyService.usdToWei(Number(minInvestment))).toString();
+      }
+
+      const payload: any = {
         title,
         shortDescription,
         fullDescription,
         category,
         location,
-  marketSize: marketSize.trim(),
+        marketSize: marketSize.trim(),
         funding: {
           target: Number(fundingGoal) || 100,
           minimumInvestment: Number(minInvestment) || 5,
           raised: 0,
           percentage: 0,
           investors: 0,
-          expectedROI: 'N/A',
-          repaymentDays: repaymentDays || undefined
+          expectedROI: expectedROI || 'N/A',
+          repaymentDays: Number(paymentDaysAfterGoal) || 30,
+          // Store wei amounts for blockchain
+          targetWei: fundingGoalWei,
+          minimumInvestmentWei: minInvestmentWei
         },
-        milestones: useMilestones ? milestones : [],
+        milestones: [],
         images: uploadedUrls.length ? uploadedUrls : projectImages,
         draft: !!saveAsDraft,
-        entrepreneurWallet: user.walletAddress
+        entrepreneurWallet: user.walletAddress,
+        onChain: publishToBlockchain
       };
 
+      // If publishing to blockchain, do it first
+      if (publishToBlockchain) {
+        setIsPublishing(true);
+        try {
+          const nextCampaignId = await blockchainService.getNextCampaignId();
+          
+          const reg = await blockchainService.registerCompany(title);
+          const companyId = reg?.companyId ?? await blockchainService.getNextCompanyId();
+
+          const ethGoal = await currencyService.usdToEth(Number(fundingGoal));
+          const ethMinInv = await currencyService.usdToEth(Number(minInvestment));
+          const roi = Number(expectedROI) || 0;
+          const paymentDays = Number(paymentDaysAfterGoal) || 30;
+
+          const campaign = await blockchainService.createCampaign(
+            companyId,
+            ethGoal.toString(),
+            ethMinInv.toString(),
+            roi,
+            0,
+            paymentDays
+          );
+
+          // Update payload with blockchain data
+          payload.companyId = companyId;
+          payload.campaignId = nextCampaignId;
+          payload.blockchainTxHash = campaign.txHash;
+          payload.onChain = true;
+
+          setPublishMessage(`Company ${companyId} and campaign ${campaign.campaignId} created on blockchain. TX: ${campaign.txHash}`);
+        } catch (err: any) {
+          setPublishMessage(`Blockchain error: ${err?.message ?? String(err)}`);
+          setIsPublishing(false);
+          return; // Stop if blockchain fails
+        } finally {
+          setIsPublishing(false);
+        }
+      }
+
+      console.log('Creating project with payload:', payload);
       const res = await apiService.createProject(payload, token ?? undefined);
-      if (res.success) {
+      console.log('API Response:', res);
+      
+      if (res && res.success) {
         const created = res.data?.project;
-        if (created) setProjects(prev => [created, ...prev]);
+        if (created) {
+          setProjects(prev => [created, ...prev]);
+        }
         setShowCreateModal(false);
         resetForm();
       } else {
-        console.error('Create project failed', res);
+        console.error('Create project failed - Full response:', res);
+        const errorMsg = res?.message || res?.errors?.[0]?.message || 'Unknown error occurred';
+        // Log error without alert
+        console.error(`Error creating project: ${errorMsg}`);
       }
     } catch (err) {
       console.error('Error creating project:', err);
@@ -350,14 +433,24 @@ export default function Dashboard() {
                   My Projects
                 </button>
                 <button
-                  onClick={() => setActiveTab('analytics')}
+                  onClick={() => setActiveTab('campaigns')}
                   className={`py-4 px-1 border-b-2 font-medium text-sm transition-all duration-300 ${
-                    activeTab === 'analytics'
+                    activeTab === 'campaigns'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  Analytics (coming soon)
+                  Blockchain Campaigns
+                </button>
+                <button
+                  onClick={() => setActiveTab('investments')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-all duration-300 ${
+                    activeTab === 'investments'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  My Investments
                 </button>
                 <button
                   onClick={() => setActiveTab('marketing')}
@@ -461,6 +554,235 @@ export default function Dashboard() {
                 </div>
               )}
 
+              {activeTab === 'campaigns' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">Blockchain Campaigns</h3>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={refreshBlockchainData}
+                        disabled={loadingBlockchain}
+                        className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50"
+                      >
+                        {loadingBlockchain ? 'Syncing...' : 'Refresh'}
+                      </button>
+                      <div className="text-sm text-gray-500">
+                        {loadingBlockchain ? 'Loading...' : `${blockchainCampaigns.length} campaigns`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingBlockchain ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    </div>
+                  ) : blockchainCampaigns.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No blockchain campaigns found. Create a project and publish to blockchain to get started.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {blockchainCampaigns.map((campaign) => (
+                        <div key={campaign.campaignId} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                              <span className="font-medium text-gray-900">Campaign #{campaign.campaignId}</span>
+                            </div>
+                            <div className="flex space-x-2">
+                              {campaign.isActive && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await blockchainService.toggleCampaignStatus(campaign.campaignId, false);
+                                      // Refresh data
+                                      await refreshBlockchainData();
+                                    } catch (err) {
+                                      console.error('Failed to pause campaign:', err);
+                                    }
+                                  }}
+                                  className="px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200"
+                                >
+                                  Pause
+                                </button>
+                              )}
+                              {campaign.isFunded && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await blockchainService.distributeFunds(campaign.campaignId);
+                                      // Refresh data
+                                      await refreshBlockchainData();
+                                    } catch (err) {
+                                      console.error('Failed to distribute funds:', err);
+                                    }
+                                  }}
+                                  className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200"
+                                >
+                                  Withdraw Funds
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Goal:</span>
+                              <span className="text-sm font-medium">{currencyService.formatCurrency(Number(campaign.fundingGoal), 'ETH')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Raised:</span>
+                              <span className="text-sm font-medium">{currencyService.formatCurrency(Number(campaign.totalFunds), 'ETH')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Min Investment:</span>
+                              <span className="text-sm font-medium">{currencyService.formatCurrency(Number(campaign.minInvestment), 'ETH')}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">ROI:</span>
+                              <span className="text-sm font-medium">{campaign.expectedROI}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Status:</span>
+                              <span className={`text-sm font-medium ${campaign.isActive ? 'text-green-600' : 'text-gray-600'}`}>
+                                {campaign.isActive ? 'Active' : 'Paused'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {campaign.isFunded && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const requiredPayment = await blockchainService.getRequiredPayment(campaign.campaignId);
+                                    const confirmed = window.confirm(`Return investment? Required payment: ${currencyService.formatCurrency(Number(requiredPayment), 'ETH')}`);
+                                    if (confirmed) {
+                                      await blockchainService.returnInvestment(campaign.campaignId);
+                                      // Refresh data
+                                      await refreshBlockchainData();
+                                    }
+                                  } catch (err) {
+                                    console.error('Failed to return investment:', err);
+                                  }
+                                }}
+                                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                              >
+                                Return Investment to Investors
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'investments' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">My Investments</h3>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={refreshBlockchainData}
+                        disabled={loadingBlockchain}
+                        className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50"
+                      >
+                        {loadingBlockchain ? 'Syncing...' : 'Refresh'}
+                      </button>
+                      <div className="text-sm text-gray-500">
+                        {loadingBlockchain ? 'Loading...' : `${userInvestments.length} investments`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingBlockchain ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    </div>
+                  ) : userInvestments.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No investments found. <Link href="/invest" className="text-blue-600 hover:text-blue-700">Browse projects to invest</Link>.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {userInvestments.map((investment) => (
+                        <div key={investment.campaignId} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                              <span className="font-medium text-gray-900">Campaign #{investment.campaignId}</span>
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {currencyService.formatCurrency(Number(investment.amount), 'ETH')} invested
+                            </span>
+                          </div>
+                          
+                          {investment.campaign && (
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span className="text-sm text-gray-600">Campaign Goal:</span>
+                                <span className="text-sm font-medium">{currencyService.formatCurrency(Number(investment.campaign.fundingGoal), 'ETH')}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-gray-600">Total Raised:</span>
+                                <span className="text-sm font-medium">{currencyService.formatCurrency(Number(investment.campaign.totalFunds), 'ETH')}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-gray-600">Expected ROI:</span>
+                                <span className="text-sm font-medium">{investment.campaign.expectedROI}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm text-gray-600">Status:</span>
+                                <span className={`text-sm font-medium ${investment.campaign.isActive ? 'text-green-600' : 'text-gray-600'}`}>
+                                  {investment.campaign.isFunded ? 'Funded' : investment.campaign.isActive ? 'Active' : 'Paused'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="mt-4 pt-4 border-t border-gray-200 flex space-x-2">
+                            {investment.campaign?.isFunded && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await blockchainService.withdrawReturns(investment.campaignId);
+                                    // Refresh data
+                                    await refreshBlockchainData();
+                                  } catch (err) {
+                                    console.error('Failed to withdraw returns:', err);
+                                  }
+                                }}
+                                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                              >
+                                Withdraw Returns
+                              </button>
+                            )}
+                            {!investment.campaign?.isActive && !investment.campaign?.isFunded && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await blockchainService.refundInvestment(investment.campaignId);
+                                    // Refresh data
+                                    await refreshBlockchainData();
+                                  } catch (err) {
+                                    console.error('Failed to refund investment:', err);
+                                  }
+                                }}
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                              >
+                                Get Refund
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {activeTab === 'marketing' && (
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold text-gray-900">Marketing & Sponsorship</h3>
@@ -507,7 +829,18 @@ export default function Dashboard() {
                             Priority customer support
                           </li>
                         </ul>
-                        <button className="w-full bg-yellow-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-yellow-700 transition-colors">
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const ethAmount = await currencyService.usdToEth(49);
+                              await blockchainService.payOwner(ethAmount.toString());
+                              console.log('Premium upgrade payment sent');
+                            } catch (err) {
+                              console.error('Failed to process premium payment:', err);
+                            }
+                          }}
+                          className="w-full bg-yellow-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-yellow-700 transition-colors"
+                        >
                           Upgrade to Premium
                         </button>
                       </div>
@@ -554,7 +887,18 @@ export default function Dashboard() {
                             A/B testing support
                           </li>
                         </ul>
-                        <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const ethAmount = await currencyService.usdToEth(99);
+                              await blockchainService.payOwner(ethAmount.toString());
+                              console.log('Email campaign payment sent');
+                            } catch (err) {
+                              console.error('Failed to process campaign payment:', err);
+                            }
+                          }}
+                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                        >
                           Launch Campaign
                         </button>
                       </div>
@@ -642,10 +986,10 @@ export default function Dashboard() {
                         onChange={(e) => setFundingGoal(e.target.value ? Number(e.target.value) : '')}
                         min="100"
                         max="1000"
-                        placeholder="800"
+                        placeholder="500"
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Max: $1,000 for microinvestments</p>
+                      <p className="text-xs text-gray-500 mt-1">Min: $100, Max: $1,000</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -686,15 +1030,16 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Location and Funding minimal inputs required by backend */}
+                {/* Location and Market Size */}
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
-                    <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
+                    <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., Mexico City, Mexico" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Repayment Time (days) *</label>
-                    <input type="number" value={repaymentDays} onChange={(e) => setRepaymentDays(e.target.value ? Number(e.target.value) : '')} min={1} max={365} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Market Size</label>
+                    <input value={marketSize} onChange={(e) => setMarketSize(e.target.value)} placeholder="e.g., $5M - $20M" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">Optional, helps investors understand the opportunity</p>
                   </div>
                 </div>
               </div>
@@ -757,130 +1102,22 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Milestones Section */}
+
+
+              {/* Additional Details */}
               <div className="bg-gray-50 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-gray-900">Project Milestones</h4>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={useMilestones}
-                      onChange={(e) => setUseMilestones(e.target.checked)}
-                      className="mr-2 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Use milestones</span>
-                  </label>
-                </div>
-
-                {useMilestones && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-600">
-                      Break down your funding goal into milestones to build investor confidence.
-                    </p>
-                    
-                    {milestones.map((milestone, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="font-medium text-gray-900">Milestone {index + 1}</h5>
-                          {milestones.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeMilestone(index)}
-                              className="text-red-500 hover:text-red-700 text-sm"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Title *
-                            </label>
-                            <input
-                              type="text"
-                              value={milestone.title}
-                              onChange={(e) => updateMilestone(index, 'title', e.target.value)}
-                              placeholder="e.g., MVP Development"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Target Amount (USD) *
-                            </label>
-                            <input
-                              type="number"
-                              value={milestone.target}
-                              onChange={(e) => updateMilestone(index, 'target', e.target.value)}
-                              placeholder="200"
-                              min="50"
-                              max="1000"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Description *
-                          </label>
-                          <textarea
-                            value={milestone.description}
-                            onChange={(e) => updateMilestone(index, 'description', e.target.value)}
-                            placeholder="Describe what will be achieved with this milestone"
-                            rows={2}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-transparent outline-none text-sm resize-none"
-                          ></textarea>
-                        </div>
-                      </div>
-                    ))}
-
-                    <button
-                      type="button"
-                      onClick={addMilestone}
-                      className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span>Add Another Milestone</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Business Details */}
-              <div className="bg-gray-50 rounded-2xl p-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Business Details</h4>
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Additional Details</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Business Model
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="How does your business make money?"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
-                    ></textarea>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Expected ROI (%)</label>
+                    <input value={expectedROI} onChange={(e) => setExpectedROI(e.target.value)} type="number" step="any" placeholder="15" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Expected ROI
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., 15-25% expected"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Market Size</label>
-                    <input value={marketSize} onChange={(e) => setMarketSize(e.target.value)} placeholder="e.g., $5M - $20M" className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-                    <p className="text-xs text-gray-400 mt-1">Optional, helps investors understand the opportunity</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Repayment Time (days)</label>
+                    <input value={paymentDaysAfterGoal} onChange={(e) => setPaymentDaysAfterGoal(e.target.value)} type="number" placeholder="30" min="1" max="365" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
                   </div>
                 </div>
+                <p className="text-sm text-gray-500 mt-2">Dollar amounts will be automatically converted to ETH/wei for blockchain transactions.</p>
               </div>
 
               {/* Form Actions */}
@@ -905,13 +1142,15 @@ export default function Dashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={async () => await createProjectHandler(false)}
-                  disabled={submitting}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                  onClick={async () => await createProjectHandler(false, true)}
+                  disabled={submitting || isPublishing}
+                  className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 ${submitting || isPublishing ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                 >
-                  {submitting ? 'Publishing...' : 'Publish Project'}
+                  {submitting || isPublishing ? 'Publishing...' : 'Publish Project'}
                 </button>
               </div>
+
+              {publishMessage && <div className="mt-3 text-sm text-gray-700">{publishMessage}</div>}
             </form>
           </div>
         </div>

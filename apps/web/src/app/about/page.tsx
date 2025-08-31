@@ -23,7 +23,7 @@ export default function About() {
     {
       name: "Brian Ramirez", 
       role: "Blockchain Developer",
-      bio: "Blockchain specialist focused on DeFi protocols, smart contracts and Web3 integrations.",
+      bio: "Blockchain researcher focused on BTC, ETH, STELLAR, smart contracts and Web3 integrations.",
       avatar: "BR",
       photo: "/Brian.jpg",
       color: "from-morpho-blue to-morpho-dark-blue", 

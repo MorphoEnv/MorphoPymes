@@ -12,9 +12,9 @@ interface RegistrationPopupProps {
 export interface RegistrationData {
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string;
   userType: 'entrepreneur' | 'investor';
-  description: string;
+  description?: string;
 }
 
 export default function RegistrationPopup({
@@ -26,12 +26,13 @@ export default function RegistrationPopup({
   const [formData, setFormData] = useState<RegistrationData>({
     firstName: '',
     lastName: '',
-    email: '',
+    email: undefined,
     userType: 'entrepreneur',
     description: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [linked, setLinked] = useState(false); // whether wallet was linked via quick register
 
   if (!isOpen) return null;
 
@@ -43,10 +44,38 @@ export default function RegistrationPopup({
     }));
   };
 
+  // Quick wallet-only registration: use short wallet as name and minimal fields
+  const handleQuickRegister = async () => {
+    if (!walletAddress) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const short = `${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`;
+      const data: RegistrationData = {
+        firstName: short,
+        lastName: '',
+        userType: 'entrepreneur',
+        // email omitted on purpose
+      };
+      const success = await onComplete(data);
+      if (success) {
+        // keep the form open so user can finish profile; prefill and mark linked
+        setFormData(prev => ({ ...prev, firstName: short }));
+        setLinked(true);
+      }
+    } catch (err) {
+      console.error('Quick registration failed:', err);
+      setError('No se pudo crear la cuenta rápida. Intenta nuevamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+    // allow submit even if lastName is empty when account is already linked
+    if (!formData.firstName.trim() || (!linked && !formData.lastName.trim())) {
       setError('Nombre y apellido son requeridos');
       return;
     }
@@ -87,6 +116,11 @@ export default function RegistrationPopup({
               {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
             </p>
           </div>
+          {linked && (
+            <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-700">✅ Cuenta creada y vinculada a MetaMask. Puedes completar tu perfil ahora.</p>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -130,12 +164,27 @@ export default function RegistrationPopup({
             <input
               type="email"
               name="email"
-              value={formData.email}
+              value={formData.email || ''}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               placeholder="tu@email.com"
               disabled={isLoading}
             />
+          </div>
+
+          <div className="text-sm text-gray-600">
+            ¿Quieres crear la cuenta rápidamente sin completar datos? Puedes crearla solo con tu wallet.
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={handleQuickRegister}
+              disabled={isLoading}
+              className="w-full mb-2 px-4 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {isLoading ? 'Creando...' : 'Crear cuenta rápida (solo wallet)'}
+            </button>
           </div>
 
           <div>
