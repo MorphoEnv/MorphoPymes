@@ -86,6 +86,48 @@ export class ProjectController {
       res.status(400).json({ success: false, message: (error as Error).message || 'Error updating project' });
     }
   }
+
+  static async invest(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { walletAddress, amount } = req.body;
+      if (!walletAddress || !amount) return res.status(400).json({ success: false, message: 'walletAddress and amount are required' });
+
+      const project = await Project.findById(id);
+      if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+      // Record investment (lowercase wallet for normalization)
+      const normalizedWallet = String(walletAddress).toLowerCase();
+      project.investments = project.investments || [];
+      project.investments.push({ walletAddress: normalizedWallet, amount: Number(amount), createdAt: new Date() } as any);
+
+      // Update funding aggregates
+      project.funding.raised = Number(project.funding.raised || 0) + Number(amount);
+      project.funding.investors = (project.funding.investors || 0) + 1;
+      // percentage based on target
+      project.funding.percentage = Math.min(100, Math.round((project.funding.raised / (project.funding.target || 1)) * 100));
+
+      // Compute a simple ROI estimate for this investor based on expectedROI if numeric
+      let roiPercent: number | null = null;
+      const expectedROI = project.funding.expectedROI || project.funding.expectedROI === 'N/A' ? project.funding.expectedROI : null;
+      if (expectedROI && typeof expectedROI === 'string') {
+        const num = Number(String(expectedROI).replace('%',''));
+        if (!Number.isNaN(num)) roiPercent = num;
+      }
+
+      // Persist project
+      await project.save();
+
+      // Attach the computed roiPercent to the last investment record for response (non-persistent copy)
+      const lastInv = project.investments[project.investments.length - 1] as any;
+      const responseInv = { walletAddress: lastInv.walletAddress, amount: lastInv.amount, roiPercent: roiPercent ?? null, createdAt: lastInv.createdAt };
+
+      return res.json({ success: true, data: { project, investment: responseInv } });
+    } catch (error) {
+      console.error('Error recording investment:', error);
+      return res.status(500).json({ success: false, message: 'Error recording investment' });
+    }
+  }
 }
 
 export default ProjectController;

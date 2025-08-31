@@ -381,7 +381,31 @@ export default function ProjectDetail() {
               >
                 Cancel
               </button>
-              <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <button
+                onClick={async () => {
+                  try {
+                    // Minimal investment flow: send wallet and amount to API
+                    // Here we assume investor wallet is not integrated in this view; ask user to connect wallet later
+                    const wallet = (window as any)?.ethereum?.selectedAddress || 'anonymous';
+                    const amt = Number(investmentAmount) || 0;
+                    const res = await apiService.investProject(project._id || project.id, wallet, amt);
+                    if (res && res.success && res.data) {
+                      // update project funding locally with returned project
+                      setProject(res.data.project || res.data);
+                      setShowInvestModal(false);
+                      setInvestmentAmount('');
+                    } else {
+                      console.error('Investment failed', res);
+                      alert(res.message || 'Investment failed');
+                    }
+                  } catch (err) {
+                    console.error('Error making investment', err);
+                    alert('Error making investment');
+                  }
+                }
+                }
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
                 Confirm
               </button>
             </div>

@@ -235,6 +235,14 @@ class ApiService {
     return this.makeRequest<{ project: any }>(`/api/projects/${id}`, { method: 'GET', headers });
   }
 
+  async investProject(projectId: string, walletAddress: string, amount: number) {
+    return this.makeRequest<{ investment: any; project: any }>(`/api/projects/${projectId}/invest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress, amount })
+    });
+  }
+
   async listPublicProjects(page = 1, limit = 20, category?: string) {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (category && category !== 'All') params.append('category', category);

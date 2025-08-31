@@ -15,6 +15,9 @@ router.get('/categories', ProjectController.listCategories);
 // Get single project by id
 router.get('/:id', ProjectController.getById);
 
+// Invest in a project (record investor wallet and amount)
+router.post('/:id/invest', ProjectController.invest);
+
 // Create project
 router.post('/', ProjectController.create);
 
