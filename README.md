@@ -4,7 +4,13 @@ MorphoPymes is a decentralized micro-investment platform designed to empower sma
 We connect local entrepreneurs with individual investors through blockchain and ENS, enabling transparent, inclusive, and impactful financing.  
 
 ---
+## 🔗 Contract Links:
+### MoPy:
+`https://base-sepolia.blockscout.com/address/0x53F3E45e49F5aE1f49BD35fF3DE767dCC905900C#code`
+### Escrow manager: 
+`https://base-sepolia.blockscout.com/address/0x0260D12C49b73782B69733045662DCCaB981637f#code`
 
+---
 ## Tech Stack
 
 - **MERN Stack**

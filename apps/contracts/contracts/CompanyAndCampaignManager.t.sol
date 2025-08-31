@@ -35,22 +35,42 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testCompanyRegistration() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
-        CompanyAndCampaignManager.Company memory company = manager.getCompany(company1);
+        assertEq(companyId, 1);
+        
+        CompanyAndCampaignManager.Company memory company = manager.getCompany(companyId);
         assertEq(company.companyName, "Test Company");
         assertEq(company.owner, company1);
         assertTrue(company.isRegistered);
         assertEq(company.registrationDate, block.timestamp);
+        assertEq(company.companyId, companyId);
+        
+        uint256[] memory ownerCompanies = manager.getOwnerCompanies(company1);
+        assertEq(ownerCompanies.length, 1);
+        assertEq(ownerCompanies[0], companyId);
     }
 
-    function testCannotRegisterTwice() public {
+    function testCanRegisterMultipleCompanies() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId1 = manager.registerCompany("First Company");
         
         vm.prank(company1);
-        vm.expectRevert("Caller is already a registered company owner");
-        manager.registerCompany("Another Company");
+        uint256 companyId2 = manager.registerCompany("Second Company");
+        
+        assertEq(companyId1, 1);
+        assertEq(companyId2, 2);
+        
+        uint256[] memory ownerCompanies = manager.getOwnerCompanies(company1);
+        assertEq(ownerCompanies.length, 2);
+        assertEq(ownerCompanies[0], companyId1);
+        assertEq(ownerCompanies[1], companyId2);
+        
+        CompanyAndCampaignManager.Company memory company1Data = manager.getCompany(companyId1);
+        CompanyAndCampaignManager.Company memory company2Data = manager.getCompany(companyId2);
+        
+        assertEq(company1Data.companyName, "First Company");
+        assertEq(company2Data.companyName, "Second Company");
     }
 
     function testCannotRegisterEmptyName() public {
@@ -61,10 +81,11 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testCreateCampaign() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
         uint256 campaignId = manager.createCampaign(
+            companyId,
             5 ether,        // goal
             0.1 ether,      // min investment
             30,             // 30 days
@@ -74,6 +95,7 @@ contract CompanyAndCampaignManagerTest is Test {
         assertEq(campaignId, 1);
         
         CompanyAndCampaignManager.Campaign memory campaign = manager.getCampaign(campaignId);
+        assertEq(campaign.companyId, companyId);
         assertEq(campaign.ownerAddress, company1);
         assertEq(campaign.goalAmount, 5 ether);
         assertEq(campaign.minInvestment, 0.1 ether);
@@ -82,18 +104,19 @@ contract CompanyAndCampaignManagerTest is Test {
         assertFalse(campaign.goalReached);
     }
 
-    function testCannotCreateCampaignWithoutRegistration() public {
+    function testCannotCreateCampaignWithInvalidCompany() public {
         vm.prank(company1);
-        vm.expectRevert("Must be a registered company owner");
-        manager.createCampaign(5 ether, 0.1 ether, 30, 1500);
+        vm.expectRevert("Company does not exist");
+        manager.createCampaign(999, 5 ether, 0.1 ether, 30, 1500);
     }
 
     function testInvestment() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
-        uint256 campaignId = manager.createCampaign(5 ether, 0.1 ether, 30, 1500);
+        uint256 campaignId = manager.createCampaign(
+            companyId,5 ether, 0.1 ether, 30, 1500);
         
         vm.prank(investor1);
         manager.invest{value: 1 ether}(campaignId);
@@ -107,10 +130,11 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testCannotInvestBelowMinimum() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
-        uint256 campaignId = manager.createCampaign(5 ether, 0.1 ether, 30, 1500);
+        uint256 campaignId = manager.createCampaign(
+            companyId,5 ether, 0.1 ether, 30, 1500);
         
         vm.prank(investor1);
         vm.expectRevert("Investment amount is below the minimum");
@@ -119,10 +143,11 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testCampaignGoalReached() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
-        uint256 campaignId = manager.createCampaign(2 ether, 0.1 ether, 30, 1500);
+        uint256 campaignId = manager.createCampaign(
+            companyId,2 ether, 0.1 ether, 30, 1500);
         
         vm.prank(investor1);
         manager.invest{value: 1 ether}(campaignId);
@@ -138,10 +163,11 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testDistributeFunds() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
-        uint256 campaignId = manager.createCampaign(1 ether, 0.1 ether, 30, 1500);
+        uint256 campaignId = manager.createCampaign(
+            companyId,1 ether, 0.1 ether, 30, 1500);
         
         vm.prank(investor1);
         manager.invest{value: 1 ether}(campaignId);
@@ -159,10 +185,11 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testRefund() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
-        uint256 campaignId = manager.createCampaign(5 ether, 0.1 ether, 30, 1500);
+        uint256 campaignId = manager.createCampaign(
+            companyId,5 ether, 0.1 ether, 30, 1500);
         
         vm.prank(investor1);
         manager.invest{value: 1 ether}(campaignId);
@@ -185,10 +212,11 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testCannotRefundSuccessfulCampaign() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
-        uint256 campaignId = manager.createCampaign(1 ether, 0.1 ether, 30, 1500);
+        uint256 campaignId = manager.createCampaign(
+            companyId,1 ether, 0.1 ether, 30, 1500);
         
         vm.prank(investor1);
         manager.invest{value: 1 ether}(campaignId);
@@ -200,10 +228,11 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testOnlyOwnerCanPauseCampaign() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
-        uint256 campaignId = manager.createCampaign(5 ether, 0.1 ether, 30, 1500);
+        uint256 campaignId = manager.createCampaign(
+            companyId,5 ether, 0.1 ether, 30, 1500);
         
         vm.prank(investor1);
         vm.expectRevert();
@@ -212,10 +241,11 @@ contract CompanyAndCampaignManagerTest is Test {
 
     function testCannotInvestInExpiredCampaign() public {
         vm.prank(company1);
-        manager.registerCompany("Test Company");
+        uint256 companyId = manager.registerCompany("Test Company");
         
         vm.prank(company1);
-        uint256 campaignId = manager.createCampaign(5 ether, 0.1 ether, 30, 1500);
+        uint256 campaignId = manager.createCampaign(
+            companyId,5 ether, 0.1 ether, 30, 1500);
         
         vm.warp(block.timestamp + 31 days);
         
