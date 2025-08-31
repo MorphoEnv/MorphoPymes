@@ -235,6 +235,11 @@ class ApiService {
     return this.makeRequest<{ project: any }>(`/api/projects/${id}`, { method: 'GET', headers });
   }
 
+  async getInvestmentsByWallet(walletAddress: string) {
+    const params = new URLSearchParams({ wallet: walletAddress });
+    return this.makeRequest<{ projects: any[] }>(`/api/projects/investments?${params.toString()}`);
+  }
+
   async investProject(projectId: string, walletAddress: string, amount: number) {
     return this.makeRequest<{ investment: any; project: any }>(`/api/projects/${projectId}/invest`, {
       method: 'POST',

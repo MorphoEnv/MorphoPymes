@@ -59,6 +59,28 @@ export class ProjectController {
     }
   }
 
+  static async listInvestmentsByWallet(req: Request, res: Response) {
+    try {
+      const wallet = (req.query.wallet as string || '').toLowerCase();
+      if (!wallet) return res.status(400).json({ success: false, message: 'wallet query parameter is required' });
+
+      // Find projects where investments array contains this wallet
+      const projects = await Project.find({ 'investments.walletAddress': wallet }).populate({ path: 'entrepreneur', select: 'firstName lastName profileImage verified bio experience walletAddress' });
+
+      // For each project, filter investments to only include this wallet's entries
+      const result = projects.map((p: any) => {
+        const proj = p.toObject ? p.toObject() : p;
+        proj.investments = (proj.investments || []).filter((inv: any) => (inv.walletAddress || '').toLowerCase() === wallet);
+        return proj;
+      });
+
+      return res.json({ success: true, data: { projects: result } });
+    } catch (error) {
+      console.error('Error listing investments by wallet:', error);
+      return res.status(500).json({ success: false, message: 'Error listing investments' });
+    }
+  }
+
   static async getById(req: Request, res: Response) {
     try {
       const { id } = req.params;

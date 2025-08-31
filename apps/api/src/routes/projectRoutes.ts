@@ -12,6 +12,9 @@ router.get('/public', ProjectController.listPublic);
 // Categories list
 router.get('/categories', ProjectController.listCategories);
 
+// Investments by wallet (returns projects where wallet invested, with only matching investments included)
+router.get('/investments', ProjectController.listInvestmentsByWallet);
+
 // Get single project by id
 router.get('/:id', ProjectController.getById);
 

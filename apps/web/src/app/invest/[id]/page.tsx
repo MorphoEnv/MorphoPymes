@@ -1,18 +1,62 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { apiService } from '@/services/apiService';
+import PortfolioChart from '@/components/PortfolioChart';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ProjectDetail() {
   const params = useParams();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [investmentAmount, setInvestmentAmount] = useState('');
   const [showInvestModal, setShowInvestModal] = useState(false);
+  const [showInvestorsModal, setShowInvestorsModal] = useState(false);
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Build chart series from investments (cumulative raised over time)
+  const chartData = useMemo(() => {
+    const invs = Array.isArray(project?.investments) ? project.investments.slice() : [];
+    if (invs.length === 0) {
+      // fallback: single point with current raised
+      const value = project?.funding?.raised || 0;
+      return [{ date: (project?.createdAt || new Date()).toString().slice(0,10), value, change: 0 }];
+    }
+
+    // sort by createdAt
+    invs.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    let cumulative = 0;
+    const points = invs.map((inv: any, idx: number) => {
+      cumulative += Number(inv.amount) || 0;
+      const date = inv.createdAt ? new Date(inv.createdAt).toISOString().slice(0,10) : `pt-${idx}`;
+      return { date, value: Math.round(cumulative), change: 0 };
+    });
+
+    // compute change % between points
+    for (let i = 0; i < points.length; i++) {
+      if (i === 0) points[i].change = 0;
+      else {
+        const prev = points[i - 1].value || 1;
+        points[i].change = ((points[i].value - prev) / prev) * 100;
+      }
+    }
+
+    return points;
+  }, [project]);
+
+  const chartTotals = useMemo(() => {
+    if (!chartData || chartData.length === 0) return { totalValue: 0, totalGain: 0, percentageGain: 0 };
+    const first = chartData[0].value || 0;
+    const last = chartData[chartData.length - 1].value || 0;
+    const totalGain = last - first;
+    const percentageGain = first ? (totalGain / first) * 100 : 0;
+    return { totalValue: last, totalGain, percentageGain };
+  }, [chartData]);
+  const { user } = useAuth();
 
   useEffect(() => {
     (async () => {
@@ -72,6 +116,7 @@ export default function ProjectDetail() {
   const growthValue = project?.financials?.growth ?? 0;
   const customersValue = project?.financials?.customers ?? 0;
   const fundingExpectedROI = project?.funding?.expectedROI ?? project?.funding?.roi ?? 'N/A';
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100/60">
@@ -285,6 +330,16 @@ export default function ProjectDetail() {
                   })()}
                 </div>
 
+                        {/* Portfolio Chart for this project (funding over time) */}
+                        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-4 shadow-md border border-blue-200/40">
+                          <PortfolioChart
+                            data={chartData}
+                            totalValue={chartTotals.totalValue}
+                            totalGain={chartTotals.totalGain}
+                            percentageGain={chartTotals.percentageGain}
+                          />
+                        </div>
+
                 {/* Investment Panel */}
                 <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-xl border border-blue-200/50">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">Investment Details</h3>
@@ -307,7 +362,15 @@ export default function ProjectDetail() {
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>of {formatCurrency(project.funding.target)} goal</span>
-                      <span>{project.funding.investors} investors</span>
+                      <div className="flex items-center space-x-2">
+                        <span>{project.funding.investors} investors</span>
+                        <button
+                          onClick={() => setShowInvestorsModal(true)}
+                          className="text-xs text-blue-600 underline"
+                        >
+                          Details
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -384,10 +447,19 @@ export default function ProjectDetail() {
               <button
                 onClick={async () => {
                   try {
-                    // Minimal investment flow: send wallet and amount to API
-                    // Here we assume investor wallet is not integrated in this view; ask user to connect wallet later
-                    const wallet = (window as any)?.ethereum?.selectedAddress || 'anonymous';
-                    const amt = Number(investmentAmount) || 0;
+                    // Use authenticated user's wallet when available
+                    const wallet = user?.walletAddress || (window as any)?.ethereum?.selectedAddress || null;
+                    if (!wallet) {
+                      alert('Please connect your wallet before investing.');
+                      return;
+                    }
+
+                    const amt = Number(investmentAmount);
+                    if (!amt || amt <= 0) {
+                      alert('Please enter a valid investment amount.');
+                      return;
+                    }
+
                     const res = await apiService.investProject(project._id || project.id, wallet, amt);
                     if (res && res.success && res.data) {
                       // update project funding locally with returned project
@@ -408,6 +480,35 @@ export default function ProjectDetail() {
               >
                 Confirm
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Investors Modal */}
+      {showInvestorsModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Investors</h3>
+              <button onClick={() => setShowInvestorsModal(false)} className="text-gray-500">Close</button>
+            </div>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {(project?.investments || []).length === 0 && (
+                <div className="text-gray-500">No investors yet.</div>
+              )}
+              {(project?.investments || []).map((inv: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 truncate">{inv.walletAddress}</div>
+                    <div className="text-xs text-gray-500 truncate">{inv.createdAt ? new Date(inv.createdAt).toLocaleString() : ''}</div>
+                  </div>
+                  <div className="text-right ml-4">
+                    <div className="text-sm font-semibold text-blue-600">{formatCurrency(inv.amount)}</div>
+                    <div className="text-xs text-gray-500">ROI: {inv.roiPercent ?? '—'}%</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

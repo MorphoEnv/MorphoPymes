@@ -1,93 +1,122 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import PortfolioChart from '../../components/PortfolioChart';
+import { useAuth } from '@/hooks/useAuth';
+import { apiService } from '@/services/apiService';
+import { useActiveAccount } from 'thirdweb/react';
 
 export default function FinancePage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const activeAccount = useActiveAccount();
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [myInvestments, setMyInvestments] = useState<any[]>([]);
 
-  // Portfolio performance data for chart
-  const portfolioPerformanceData = [
+  // Portfolio performance data for chart (fallback/static until we compute from real data)
+  const [portfolioPerformanceData, setPortfolioPerformanceData] = useState<any[]>([
     { date: '2024-07-01', value: 5000000, change: 0 },
     { date: '2024-07-15', value: 5250000, change: 5.0 },
     { date: '2024-08-01', value: 5180000, change: -1.33 },
     { date: '2024-08-15', value: 5420000, change: 4.63 },
     { date: '2024-08-30', value: 5700000, change: 5.17 },
-  ];
-
-  // My investments - projects where I invested
-  const myInvestments = [
-    {
-      id: 1,
-      projectName: 'EcoTech Solutions',
-      ensDomain: 'ecotech.morpho.eth',
-      founder: 'María González',
-      founderEns: 'maria.eth',
-      category: 'Technology',
-      myInvestment: 2500000, // $2,500 USD
-      investmentDate: '2024-07-15',
-      projectStatus: 'active',
-      projectGoal: 800000000, // $800K USD
-      projectRaised: 650000000, // $650K USD  
-      progressPercentage: 81.25,
-      currentValue: 2700000, // $2,700 USD - current value of my investment
-      returns: 200000, // +$200 USD profit
-      roi: 8.0, // 8% current ROI
-      expectedRoi: 22.5, // 22.5% expected ROI
-      daysRemaining: 18,
-      image: '/Figura1.png',
-      updates: [
-        { date: '2024-08-25', title: 'Beta Completed', content: 'Successfully completed beta testing phase.' },
-        { date: '2024-08-10', title: 'Product Update', content: 'New features added to IoT platform.' }
-      ],
-      nextMilestone: 'Market Launch - $800K Goal'
-    },
-    {
-      id: 2,
-      projectName: 'Urban Coffee Collective',
-      ensDomain: 'urbancoffee.morpho.eth',
-      founder: 'Carlos Mendoza',
-      founderEns: 'carlos.eth',
-      category: 'Food & Beverage',
-      myInvestment: 1500000, // $1,500 USD
-      investmentDate: '2024-05-20',
-      projectStatus: 'completed',
-      projectGoal: 450000000, // $450K USD
-      projectRaised: 465000000, // $465K USD - exceeded goal
-      progressPercentage: 103.33,
-      currentValue: 1930000, // $1,930 USD - already generated returns
-      returns: 430000, // +$430 USD profit
-      roi: 28.7, // 28.7% ROI - successful completed project
-      expectedRoi: 28.7,
-      daysRemaining: 0,
-      image: '/Figura1.png',
-      updates: [
-        { date: '2024-08-01', title: 'Project Completed', content: 'Successful launch and returns distributed.' },
-        { date: '2024-07-15', title: 'Final Report', content: 'Exceeded funding goal by 3.33%.' }
-      ],
-      nextMilestone: 'Returns Distributed'
-    }
-  ];
+  ]);
 
   // Function to format currency
   const formatCurrency = (amount: number) => {
+    const safe = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0
-    }).format(amount / 1000000); // Convert from pesos to USD for display
+      minimumFractionDigits: 0,
+    }).format(safe);
   };
+
+
+  // Load public projects and derive user's investments from project.investments
+  // derive wallet address from authenticated user or connected wallet (computed inside effect)
+
+  useEffect(() => {
+    const load = async () => {
+      const walletAddress = (user?.walletAddress || activeAccount?.address || (typeof window !== 'undefined' && (window as any)?.ethereum?.selectedAddress) || null);
+      if (!walletAddress) return;
+      setLoading(true);
+      try {
+        // Prefer calling a dedicated endpoint that returns only projects/investments for this wallet
+        const res = await apiService.getInvestmentsByWallet(walletAddress);
+        if (res.success && res.data) {
+          const all = res.data.projects || [];
+          setProjects(all);
+
+          const mine = all.map((p: any) => {
+            const invs = Array.isArray(p.investments) ? p.investments : [];
+            const totalAmount = invs.reduce((s: number, iv: any) => s + (Number(iv.amount) || 0), 0);
+            const totalCurrent = invs.reduce((s: number, iv: any) => {
+              const roi = iv.roiPercent || iv.roi || null;
+              if (roi != null && !isNaN(Number(roi))) {
+                return s + totalAmount * (1 + Number(roi) / 100);
+              }
+              return s + totalAmount;
+            }, 0);
+
+            const returns = totalCurrent - totalAmount;
+            const roiPercent = totalAmount > 0 ? (returns / totalAmount) * 100 : 0;
+
+            return {
+              id: p._id || p.id,
+              projectName: p.title || p.name || p.projectName || 'Untitled',
+              ensDomain: p.ensDomain || p.url || '',
+              founder: p.entrepreneur?.name || p.entrepreneur?.firstName || p.entrepreneur || 'Unknown',
+              founderEns: p.entrepreneur?.ensName || p.entrepreneur?.walletAddress || '',
+              category: p.category || (p.tags && p.tags[0]) || 'Other',
+              myInvestment: totalAmount,
+              investmentDate: invs[0]?.createdAt || invs[0]?.date || new Date().toISOString(),
+              projectStatus: p.status || (p.draft ? 'draft' : 'active'),
+              projectGoal: p.funding?.target || p.goal || 0,
+              projectRaised: p.funding?.raised || 0,
+              progressPercentage: p.funding?.percentage || (p.funding && p.funding.target ? Math.round((p.funding.raised / p.funding.target) * 100) : 0),
+              currentValue: Math.round(totalCurrent),
+              returns: Math.round(returns),
+              roi: Number(roiPercent.toFixed(1)),
+              expectedRoi: Number((p.funding?.expectedROI && Number(p.funding.expectedROI)) || 0),
+              daysRemaining: p.deadline ? Math.max(0, Math.ceil((new Date(p.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0,
+              image: (p.images && p.images[0]) || '/Figura1.png',
+              updates: p.updates || [],
+              nextMilestone: p.nextMilestone || '',
+            };
+          });
+
+          setMyInvestments(mine);
+
+          // optional: build a simple performance series from current total value
+          const totalValue = mine.reduce((s: number, m: any) => s + (m.currentValue || 0), 0);
+          const totalInvested = mine.reduce((s: number, m: any) => s + (m.myInvestment || 0), 0);
+          setPortfolioPerformanceData((old) => [
+            ...old,
+            { date: new Date().toISOString().slice(0, 10), value: totalValue, change: totalInvested ? ((totalValue - totalInvested) / totalInvested) * 100 : 0 },
+          ]);
+        }
+      } catch (err) {
+        console.error('Error loading finance data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [user, activeAccount?.address]);
 
   // Calculate portfolio statistics
   const portfolioStats = {
-    totalInvested: myInvestments.reduce((sum, inv) => sum + inv.myInvestment, 0),
-    currentValue: myInvestments.reduce((sum, inv) => sum + inv.currentValue, 0),
-    totalReturns: myInvestments.reduce((sum, inv) => sum + inv.returns, 0),
-    averageRoi: myInvestments.reduce((sum, inv) => sum + inv.roi, 0) / myInvestments.length,
-    activeInvestments: myInvestments.filter(inv => inv.projectStatus === 'active').length,
-    completedInvestments: myInvestments.filter(inv => inv.projectStatus === 'completed').length
+    totalInvested: myInvestments.reduce((sum, inv) => sum + (inv.myInvestment || 0), 0),
+    currentValue: myInvestments.reduce((sum, inv) => sum + (inv.currentValue || 0), 0),
+    totalReturns: myInvestments.reduce((sum, inv) => sum + (inv.returns || 0), 0),
+    averageRoi: myInvestments.length ? myInvestments.reduce((sum, inv) => sum + (inv.roi || 0), 0) / myInvestments.length : 0,
+    activeInvestments: myInvestments.filter((inv) => inv.projectStatus === 'active').length,
+    completedInvestments: myInvestments.filter((inv) => inv.projectStatus === 'completed').length,
   };
 
   return (
@@ -185,7 +214,7 @@ export default function FinancePage() {
             data={portfolioPerformanceData}
             totalValue={portfolioStats.currentValue}
             totalGain={portfolioStats.totalReturns}
-            percentageGain={(portfolioStats.totalReturns / portfolioStats.totalInvested) * 100}
+            percentageGain={portfolioStats.totalInvested ? (portfolioStats.totalReturns / portfolioStats.totalInvested) * 100 : 0}
           />
         </div>
       </section>
@@ -197,7 +226,13 @@ export default function FinancePage() {
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">My Investments</h2>
             
             <div className="space-y-4 md:space-y-6">
-              {myInvestments.map((investment) => (
+                {myInvestments.length === 0 && !loading && (
+                  <div className="p-6 text-center text-gray-600">
+                    No investments found for your connected wallet. Connect your wallet or log in to see your portfolio.
+                  </div>
+                )}
+
+                {myInvestments.map((investment) => (
                 <div key={investment.id} className="border border-gray-200 rounded-xl p-4 md:p-6 bg-gray-50/50">
                   <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
                     {/* Project Info */}
