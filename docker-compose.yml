@@ -4,8 +4,8 @@ services:
     env_file:
       - ./apps/web/.env.local
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
@@ -24,8 +24,8 @@ services:
     env_file:
       - ./apps/api/.env.local
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./apps/api/Dockerfile
     ports:
       - "4000:4000" # host 4000 -> container 4000
     environment:
