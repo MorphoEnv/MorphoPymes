@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/ui/Navbar";
 import Footer from "@/components/ui/Footer";
 import ThirdWebProviderWrapper from "@/components/providers/ThirdWebProvider";
+import MorphProvider from "@/components/MorphProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <MorphProvider />
         </ThirdWebProviderWrapper>
       </body>
     </html>
