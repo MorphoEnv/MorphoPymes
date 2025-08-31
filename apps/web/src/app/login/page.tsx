@@ -220,6 +220,11 @@ export default function Login() {
                   </>
                 )}
               </button>
+
+              {/* ThirdWeb explanatory note for new users */}
+              <div className="mt-3 text-sm text-gray-600">
+                <strong className="font-medium">Note:</strong> If you don't have an external wallet, ThirdWeb can create an in-app wallet for you (for example, sign in with Google) so you can get started immediately. If you already use MetaMask or another wallet, connect it to use your own address.
+              </div>
             </div>
 
             {/* Contact Us Link */}

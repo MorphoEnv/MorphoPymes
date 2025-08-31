@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { formatUsdWithEth } from '@/utils/currency';
 
 export default function InvestorGetStarted() {
   const [isConnecting, setIsConnecting] = useState(false);
@@ -51,9 +52,9 @@ export default function InvestorGetStarted() {
             </span>
           </h1>
           
-          <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto mb-12">
+            <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto mb-12">
             Connect your wallet and start investing in verified SMEs with complete transparency. 
-            Earn up to 25% APY with investments starting from just $10.
+            Earn up to 25% APY with investments starting from {formatUsdWithEth(10)}.
           </p>
         </div>
       </section>
@@ -139,7 +140,7 @@ export default function InvestorGetStarted() {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                       <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
-                        <div className="text-lg font-bold text-blue-600">$10+</div>
+                        <div className="text-lg font-bold text-blue-600">{formatUsdWithEth(10)}+</div>
                         <div className="text-sm text-gray-600">Min Investment</div>
                       </div>
                       <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
@@ -252,7 +253,7 @@ export default function InvestorGetStarted() {
             
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-blue-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">What's the minimum investment?</h3>
-              <p className="text-gray-600">You can start investing with as little as $10 USD equivalent in ETH or USDC. This makes DeFi accessible to everyone.</p>
+              <p className="text-gray-600">You can start investing with as little as {formatUsdWithEth(10)} equivalent in ETH or USDC. This makes DeFi accessible to everyone.</p>
             </div>
             
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-blue-100">

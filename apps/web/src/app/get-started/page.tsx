@@ -2,6 +2,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import Link from 'next/link';
 import Image from 'next/image';
+import { formatUsdWithEth } from '@/utils/currency';
 
 export default function GetStarted() {
   return (
@@ -55,7 +56,7 @@ export default function GetStarted() {
                   <h2 className="text-3xl font-bold text-gray-900 mb-4">Start Investing</h2>
                   <p className="text-gray-600 mb-8 leading-relaxed">
                     Connect your wallet and start investing in verified Latin American SMEs. 
-                    Earn up to 25% APY with investments starting from just $10.
+                    Earn up to 25% APY with investments starting from {formatUsdWithEth(10)}.
                   </p>
 
                   {/* Features List */}
@@ -82,7 +83,7 @@ export default function GetStarted() {
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       </div>
-                      <span className="text-gray-700">Start with $10 minimum</span>
+                      <span className="text-gray-700">Start with {formatUsdWithEth(10)} minimum</span>
                     </div>
                     <div className="flex items-center">
                       <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center mr-3">

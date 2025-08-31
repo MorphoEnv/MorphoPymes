@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { formatUsdWithEth } from '@/utils/currency';
 import Link from 'next/link';
 
 export default function Home() {
@@ -44,8 +45,8 @@ export default function Home() {
 
               <div className="flex items-center gap-6 pt-4 justify-center lg:justify-start">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">$10</div>
-                  <div className="text-sm text-gray-600">Starting from</div>
+                  <div className="text-2xl font-bold text-gray-900">{formatUsdWithEth(10)}</div>
+                    <div className="text-sm text-gray-600">Starting from</div>
                 </div>
                 <div className="w-px h-12 bg-gray-300"></div>
                 <div className="text-center">
