@@ -10,6 +10,9 @@ export interface IUser extends Document {
   description?: string;
   userType: 'entrepreneur' | 'investor';
   verified: boolean;
+  emailVerified?: boolean;
+  emailVerificationToken?: string;
+  verificationExpires?: Date;
   ensName?: string;
   linkedin?: string;
   experience?: string;
@@ -58,6 +61,18 @@ const UserSchema: Schema = new Schema({
   verified: {
     type: Boolean,
     default: false
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    trim: true,
+    sparse: true
+  },
+  verificationExpires: {
+    type: Date,
   },
   ensName: {
     type: String,

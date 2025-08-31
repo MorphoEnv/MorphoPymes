@@ -61,6 +61,30 @@ export class UserService {
   }
 
   /**
+   * Buscar usuario por email
+   */
+  static async getUserByEmail(email: string): Promise<IUser | null> {
+    try {
+      const user = await User.findOne({ email: email.toLowerCase() });
+      return user;
+    } catch (error) {
+      throw new Error('Error al buscar el usuario por email');
+    }
+  }
+
+  /**
+   * Buscar usuario por token de verificación
+   */
+  static async getUserByVerificationToken(token: string): Promise<IUser | null> {
+    try {
+      const user = await User.findOne({ emailVerificationToken: token });
+      return user;
+    } catch (error) {
+      throw new Error('Error al buscar el usuario por token de verificación');
+    }
+  }
+
+  /**
    * Actualizar usuario
    */
   static async updateUser(
