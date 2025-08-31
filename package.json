@@ -11,5 +11,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "devDependencies": {
+    "eslint-plugin-react-hooks": "^4.11.0"
+  },
   "packageManager": "pnpm@10.15.0"
 }

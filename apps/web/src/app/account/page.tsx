@@ -633,10 +633,11 @@ export default function Account() {
                             setWithdrawLoading(true);
                             try {
                               // Use ThirdWeb account's sendTransaction API
-                              const tx = await activeAccount.sendTransaction({
+                              // Cast options to any to satisfy typing in build environment
+                              const tx = await activeAccount.sendTransaction(({
                                 to: dest,
                                 value: valueWei,
-                              });
+                              } as any));
                               // tx.transactionHash should be present
                               setWithdrawTxHash((tx && tx.transactionHash) || tx?.hash || '');
                               setWithdrawError('');
