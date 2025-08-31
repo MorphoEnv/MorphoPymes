@@ -49,6 +49,7 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         uint256 paymentDaysAfterGoal;
         uint256 paymentDeadline;
         uint256 totalRaised;
+        uint256 totalPenaltiesPaid;
         bool active;
         bool goalReached;
         bool fundsDistributed;
@@ -147,6 +148,7 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
             paymentDaysAfterGoal: _paymentDaysAfterGoal,
             paymentDeadline: 0, // Set when goal is reached
             totalRaised: 0,
+            totalPenaltiesPaid: 0,
             active: true,
             goalReached: false,
             fundsDistributed: false,
@@ -253,6 +255,9 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         uint256 totalReturnAmount = getRequiredPayment(_campaignId);
         require(msg.value >= totalReturnAmount, "Insufficient ETH sent for returns (including penalties)");
         
+        // Track penalties paid separately
+        uint256 baseAmount = campaign.totalRaised + (campaign.totalRaised * campaign.returnPercentage / 10000);
+        campaign.totalPenaltiesPaid = msg.value - baseAmount;
         campaign.returnsDistributed = true;
         
         // Return investment + interest to each investor proportionally
@@ -291,10 +296,9 @@ contract CompanyAndCampaignManager is Ownable, ReentrancyGuard {
         uint256 baseReturn = investmentAmount + (investmentAmount * campaign.returnPercentage / 10000);
         
         // Add proportional share of penalty rewards if entrepreneur paid penalties
-        uint256 totalPenaltiesPaid = address(this).balance - (campaign.totalRaised + (campaign.totalRaised * campaign.returnPercentage / 10000));
-        if (totalPenaltiesPaid > 0) {
+        if (campaign.totalPenaltiesPaid > 0) {
             // Investor gets their proportional share of total penalties paid
-            uint256 investorPenaltyShare = (totalPenaltiesPaid * investmentAmount) / campaign.totalRaised;
+            uint256 investorPenaltyShare = (campaign.totalPenaltiesPaid * investmentAmount) / campaign.totalRaised;
             baseReturn += investorPenaltyShare;
         }
         
