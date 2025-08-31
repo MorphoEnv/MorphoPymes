@@ -5,7 +5,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Install pnpm
-RUN npm install -g pnpm@7
+RUN npm install -g pnpm@10.15.0
 
 # Allow passing NEXT_PUBLIC_API_URL at build time so the value is embedded in the client bundle
 ARG NEXT_PUBLIC_API_URL

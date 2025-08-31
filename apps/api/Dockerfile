@@ -4,7 +4,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Install pnpm
-RUN npm install -g pnpm@7
+RUN npm install -g pnpm@10.15.0
 
 # Copy lockfiles and install deps
 COPY package.json pnpm-lock.yaml ./
