@@ -6,6 +6,12 @@ const router = Router();
 // List projects for an entrepreneur
 router.get('/entrepreneur/:walletAddress', ProjectController.listByEntrepreneur);
 
+// Public listing (exclude drafts)
+router.get('/public', ProjectController.listPublic);
+
+// Categories list
+router.get('/categories', ProjectController.listCategories);
+
 // Get single project by id
 router.get('/:id', ProjectController.getById);
 

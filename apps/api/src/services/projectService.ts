@@ -74,6 +74,22 @@ export class ProjectService {
     return project;
   }
 
+  static async listPublicProjects(opts: { page?: number; limit?: number; category?: string } = {}) {
+    const page = opts.page || 1;
+    const limit = opts.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const filter: any = { status: { $ne: 'draft' } };
+    if (opts.category) filter.category = opts.category;
+
+    const [projects, total] = await Promise.all([
+      Project.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate({ path: 'entrepreneur', select: 'firstName lastName profileImage verified bio experience walletAddress' }),
+      Project.countDocuments(filter)
+    ]);
+
+    return { projects, total, pages: Math.ceil(total / limit) };
+  }
+
   static async createProject(data: CreateProjectData) {
     const user = await User.findOne({ walletAddress: data.entrepreneurWallet.toLowerCase() });
     if (!user) throw new Error('Entrepreneur user not found');

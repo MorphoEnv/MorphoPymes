@@ -1,113 +1,84 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { apiService } from '@/services/apiService';
 
-// Mock data para proyectos de ejemplo
-const mockProjects = [
-  {
-    id: 1,
-    title: 'EcoTech Solutions',
-    description: 'Soluciones tecnológicas sostenibles para empresas que buscan reducir su huella de carbono.',
-    entrepreneur: {
-      name: 'María González',
-      avatar: '/default-avatar.svg',
-      verified: true
-    },
-    funding: {
-      target: 800,
-      raised: 520,
-      percentage: 65,
-      investors: 28
-    },
-    milestones: true,
-    category: 'Technology',
-    location: 'Medellín, Colombia',
-    featured: true,
-    sponsored: true,
-    image: '/Figura1.png'
-  },
-  {
-    id: 2,
-    title: 'Café Premium Local',
-    description: 'Producción y distribución de café de alta calidad directamente desde fincas colombianas.',
-    entrepreneur: {
-      name: 'Carlos Rodríguez',
-      avatar: '/default-avatar.svg',
-      verified: true
-    },
-    funding: {
-      target: 500,
-      raised: 375,
-      percentage: 75,
-      investors: 15
-    },
-    milestones: false,
-    category: 'Food & Beverage',
-    location: 'Bogotá, Colombia',
-    featured: false,
-    sponsored: false,
-    image: '/Figura1.png'
-  },
-  {
-    id: 3,
-    title: 'HealthApp Mobile',
-    description: 'Aplicación móvil para el seguimiento de salud personal y conexión con profesionales médicos.',
-    entrepreneur: {
-      name: 'Ana Martínez',
-      avatar: '/default-avatar.svg',
-      verified: false
-    },
-    funding: {
-      target: 1000,
-      raised: 160,
-      percentage: 16,
-      investors: 8
-    },
-    milestones: true,
-    category: 'Healthcare',
-    location: 'Cali, Colombia',
-    featured: true,
-    sponsored: false,
-    image: '/Figura1.png'
-  },
-  {
-    id: 4,
-    title: 'Textile Innovation',
-    description: 'Producción de textiles ecológicos usando materiales reciclados y procesos sostenibles.',
-    entrepreneur: {
-      name: 'Juan Pablo Silva',
-      avatar: '/default-avatar.svg',
-      verified: true
-    },
-    funding: {
-      target: 600,
-      raised: 520,
-      percentage: 87,
-      investors: 42
-    },
-    milestones: true,
-    category: 'Fashion',
-    location: 'Barranquilla, Colombia',
-    featured: false,
-    sponsored: true,
-    image: '/Figura1.png'
-  }
-];
+// Projects state (fetched from API)
+const defaultProjects: any[] = [];
 
-const categories = ['All', 'Technology', 'Healthcare', 'Food & Beverage', 'Fashion', 'Education'];
+// Categories will be fetched from backend
+const defaultCategories: string[] = ['All'];
 
 export default function Invest() {
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  // selectedCategory will hold the raw value ('' for All)
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  // categories are objects with { label, value }
+  const [categories, setCategories] = useState<Array<{ label: string; value: string }>>([{ label: 'All', value: '' }]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [projects, setProjects] = useState<any[]>(defaultProjects);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
 
-  const filteredProjects = mockProjects.filter(project => {
-    const matchesCategory = selectedCategory === 'All' || project.category === selectedCategory;
-    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredProjects = projects.filter(project => {
+    const matchesCategory = !selectedCategory || project.category === selectedCategory || project.category?.toLowerCase?.() === selectedCategory.toLowerCase();
+    const matchesSearch = (project.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (project.shortDescription || project.description || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+  const res = await apiService.listPublicProjects(page, 12, selectedCategory || undefined);
+    if (res && res.success && res.data) {
+          setPages(res.data.pages || 1);
+          // map backend shape into frontend-friendly shape
+          setProjects((res.data.projects || []).map((p: any) => ({
+            id: p._id,
+            title: p.title,
+            shortDescription: p.shortDescription,
+            description: p.fullDescription || p.description || p.shortDescription,
+            entrepreneur: {
+              name: p.entrepreneur?.firstName && p.entrepreneur?.lastName ? `${p.entrepreneur.firstName} ${p.entrepreneur.lastName}` : (p.entrepreneur?.name || p.entrepreneur?.walletAddress || 'Emprendedor'),
+              avatar: p.entrepreneur?.profileImage || p.entrepreneur?.avatar || '/default-avatar.svg',
+              verified: !!p.entrepreneur?.verified
+            },
+            funding: p.funding || { target: 0, raised: 0, percentage: 0, investors: 0 },
+            milestones: Array.isArray(p.milestones) ? p.milestones.length > 0 : !!p.milestones,
+            category: p.category,
+            location: p.location,
+            featured: !!p.featured,
+            sponsored: !!p.sponsored,
+            image: Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : '/Figura1.png',
+            marketSize: p.marketSize || ''
+          })));
+        }
+      } catch (err) {
+        console.error('Error loading public projects', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [selectedCategory, page]);
+
+  // fetch categories once
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiService.getCategories();
+        if (res && res.success && res.data?.categories) {
+          // expect categories as { label, value }
+          setCategories(res.data.categories.map((c: any) => ({ label: c.label || String(c.value || ''), value: c.value || '' })));
+        }
+      } catch (err) {
+        // ignore
+      }
+    })();
+  }, []);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -158,21 +129,31 @@ export default function Invest() {
 
               {/* Category Filter */}
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {categories.map((category) => (
+                {categories.map((cat) => (
                   <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
+                    key={cat.value}
+                    onClick={() => { setSelectedCategory(cat.value); setPage(1); }}
                     className={`whitespace-nowrap px-4 py-3 rounded-xl font-medium text-sm transition-all duration-300 ${
-                      selectedCategory === category
+                      selectedCategory === cat.value
                         ? 'bg-blue-600 text-white shadow-lg'
                         : 'bg-white/90 text-gray-700 hover:bg-blue-50 border border-blue-200/50'
                     }`}
                   >
-                    {category}
+                    {cat.label}
                   </button>
                 ))}
               </div>
             </div>
+          </div>
+          {/* Pagination Controls */}
+          <div className="mt-8 flex items-center justify-center space-x-4">
+            <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-4 py-2 bg-white rounded-lg border">
+              Prev
+            </button>
+            <div className="text-sm text-gray-600">Page {page} of {pages}</div>
+            <button disabled={page >= pages} onClick={() => setPage(p => Math.min(pages, p + 1))} className="px-4 py-2 bg-white rounded-lg border">
+              Next
+            </button>
           </div>
         </div>
       </section>

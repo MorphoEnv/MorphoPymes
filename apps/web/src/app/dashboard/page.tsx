@@ -52,6 +52,23 @@ export default function Dashboard() {
     })();
   }, [user?.walletAddress, token]);
 
+  // fetch categories for create modal
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiService.getCategories();
+        if (res && res.success && res.data?.categories) {
+          const cats = res.data.categories as Array<any>;
+          const mapped = cats.map((c) => ({ label: c.label || String(c.value || ''), value: c.value || '' }));
+          setCategories(mapped);
+          if (!category && mapped.length > 0) setCategory(mapped[0].value || '');
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, []);
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -146,9 +163,11 @@ export default function Dashboard() {
   const [repaymentDays, setRepaymentDays] = useState<number | ''>('');
   const [fundingGoal, setFundingGoal] = useState<number | ''>('');
   const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<Array<{ label: string; value: string }>>([]);
   const [minInvestment, setMinInvestment] = useState<number | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [location, setLocation] = useState('');
+  const [marketSize, setMarketSize] = useState('');
 
   const createProjectHandler = async (saveAsDraft = false) => {
     if (!user?.walletAddress) return;
@@ -183,6 +202,7 @@ export default function Dashboard() {
         fullDescription,
         category,
         location,
+  marketSize: marketSize.trim(),
         funding: {
           target: Number(fundingGoal) || 100,
           minimumInvestment: Number(minInvestment) || 5,
@@ -632,11 +652,19 @@ export default function Dashboard() {
                       </label>
                       <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value={category} onChange={(e) => setCategory(e.target.value)}>
                         <option value="">Select category</option>
-                        <option value="technology">Technology</option>
-                        <option value="healthcare">Healthcare</option>
-                        <option value="food">Food & Beverage</option>
-                        <option value="fashion">Fashion</option>
-                        <option value="education">Education</option>
+                        {categories && categories.length > 0 ? (
+                          categories.map((c) => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="technology">Technology</option>
+                            <option value="healthcare">Healthcare</option>
+                            <option value="food">Food & Beverage</option>
+                            <option value="fashion">Fashion</option>
+                            <option value="education">Education</option>
+                          </>
+                        )}
                       </select>
                     </div>
                     <div>
@@ -845,6 +873,11 @@ export default function Dashboard() {
                       placeholder="e.g., 15-25% expected"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Market Size</label>
+                    <input value={marketSize} onChange={(e) => setMarketSize(e.target.value)} placeholder="e.g., $5M - $20M" className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
+                    <p className="text-xs text-gray-400 mt-1">Optional, helps investors understand the opportunity</p>
                   </div>
                 </div>
               </div>

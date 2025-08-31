@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ProjectService } from '../services/projectService';
+import { Project } from '../models/Project';
 
 export class ProjectController {
   static async listByEntrepreneur(req: Request, res: Response) {
@@ -23,6 +24,38 @@ export class ProjectController {
     } catch (error) {
       console.error('Error creating project:', error);
       res.status(400).json({ success: false, message: (error as Error).message || 'Error creating project' });
+    }
+  }
+
+  static async listPublic(req: Request, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const category = req.query.category as string | undefined;
+      const result = await ProjectService.listPublicProjects({ page, limit, category });
+      res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('Error listing public projects:', error);
+      res.status(500).json({ success: false, message: 'Error listing public projects' });
+    }
+  }
+
+  static async listCategories(req: Request, res: Response) {
+    try {
+      // Try to read enum values from the mongoose schema first and return { label, value } pairs
+      const enumVals = (Project.schema.path('category') as any)?.enumValues;
+      if (Array.isArray(enumVals) && enumVals.length > 0) {
+        const categories = [{ label: 'All', value: '' }, ...enumVals.map((v: string) => ({ label: (v.charAt(0).toUpperCase() + v.slice(1)), value: v }))];
+        return res.json({ success: true, data: { categories } });
+      }
+
+      // Fallback: distinct values present in DB
+      const cats = await Project.distinct('category');
+      const categories = [{ label: 'All', value: '' }, ...((cats || []) as string[]).map((v) => ({ label: (v?.charAt(0)?.toUpperCase?.() ? v.charAt(0).toUpperCase() + v.slice(1) : String(v)), value: v }))];
+      return res.json({ success: true, data: { categories } });
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      res.status(500).json({ success: false, message: 'Error fetching categories' });
     }
   }
 

@@ -235,6 +235,17 @@ class ApiService {
     return this.makeRequest<{ project: any }>(`/api/projects/${id}`, { method: 'GET', headers });
   }
 
+  async listPublicProjects(page = 1, limit = 20, category?: string) {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (category && category !== 'All') params.append('category', category);
+    return this.makeRequest<{ projects: any[]; total: number; pages: number }>(`/api/projects/public?${params.toString()}`);
+  }
+
+  async getCategories() {
+    // returns { categories: Array<{ label: string; value: string }> }
+    return this.makeRequest<{ categories: Array<{ label: string; value: string }> }>(`/api/projects/categories`);
+  }
+
   async updateProject(id: string, payload: any, token?: string) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
