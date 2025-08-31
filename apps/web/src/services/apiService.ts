@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Configuración base de la API
+// Use relative API routes for frontend calls. DO NOT store sensitive keys in client bundles.
+// All secrets (private keys, API secrets) must be kept on the server and accessed via secure API endpoints under /api/*
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+// Helper to build full path — keeps code consistent
+function apiPath(path: string) {
+  if (path.startsWith('/')) return path;
+  return `/${path}`;
+}
 
 // Tipos para el usuario
 export interface User {
