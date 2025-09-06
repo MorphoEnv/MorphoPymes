@@ -37,11 +37,11 @@ export default function About() {
     {
       name: "Santiago Valverde",
       role: "Developer (Documentation Lead)",
-      bio: "Responsible for project documentation, technical writing, and related coordination.",
+      bio: "Responsible for project documentation, technical writing, and frontend development.",
       avatar: "SV",
-      photo: "/santiago.jpg",
+      photo: "/Santiago.jpeg",
       color: "from-blue-500 to-morpho-blue",
-      skills: ["APIs", "Documentation", "Node.js"],
+      skills: ["APIs", "Documentation", "Node.js", "React"],
       socials: {
         linkedin: "https://www.linkedin.com/in/santiago-valverde-135316279/",
         github: "https://github.com/santivalverde4",
@@ -63,12 +63,6 @@ export default function About() {
         </div>
         
         <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center space-x-2 bg-morpho-blue/10 text-morpho-blue px-4 py-2 rounded-full text-sm font-medium mb-6 border border-morpho-blue/20">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-            <span>Aleph Hackathon 2025</span>
-          </div>
           
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
             About <span className="text-morpho-blue">MorphoPymes</span>
@@ -229,19 +223,6 @@ export default function About() {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Hackathon Badge */}
-        <div className="text-center mt-16">
-          <div className="inline-flex items-center space-x-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-xl">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-            <span>Aleph Hackathon 2025</span>
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-          </div>
         </div>
 
         {/* CTA */}

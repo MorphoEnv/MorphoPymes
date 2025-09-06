@@ -70,9 +70,6 @@ export default function Footer() {
           <p className="text-sm text-gray-500">
             © {currentYear} MorphoPymes. Todos los derechos reservados.
           </p>
-          <p className="text-xs text-gray-400 mt-2">
-            Desarrollado para Aleph Hackathon 2025
-          </p>
         </div>
       </div>
     </footer>
