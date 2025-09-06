@@ -20,3 +20,6 @@
 /coverage
 
 /ignition
+
+# env files (can opt-in for committing if needed)
+.env*
