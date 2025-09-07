@@ -228,7 +228,7 @@ export default function Login() {
                   </>
                 ) : (
                   <>
-                    <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
+                    <div className="w-6 h-6 bg-gradient-to-r from-morpho-blue to-morpho-dark-blue rounded-lg flex items-center justify-center">
                       <div className="w-3 h-3 bg-white rounded-sm"></div>
                     </div>
                     <span className="font-medium text-gray-700">Conectar Wallet</span>
@@ -241,10 +241,10 @@ export default function Login() {
               <button
                 onClick={handleConnectMetaMask}
                 disabled={connectingMethod === 'metamask' || isConnecting}
-                className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-yellow-200 rounded-xl transition-all duration-300 ${
+                className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-blue-200 rounded-xl transition-all duration-300 ${
                   connectingMethod === 'metamask' || isConnecting
                     ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:border-yellow-300 hover:bg-yellow-50/50 hover:shadow-md'
+                    : 'hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-md'
                 }`}
               >
                 {connectingMethod === 'metamask' || isConnecting ? (
@@ -254,11 +254,11 @@ export default function Login() {
                   </>
                 ) : (
                   <>
-                    <div className="w-6 h-6 bg-yellow-400 rounded-lg flex items-center justify-center">
+                    <div className="w-6 h-6 bg-blue-400 rounded-lg flex items-center justify-center">
                       <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor"/></svg>
                     </div>
                     <span className="font-medium text-gray-700">Conectar MetaMask</span>
-                    <div className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Inyectada</div>
+                    <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Inyectada</div>
                   </>
                 )}
               </button>
@@ -267,20 +267,20 @@ export default function Login() {
                <button
                  onClick={handleConnectThirdWebEmail}
                  disabled={connectingMethod === 'thirdweb-email' || isConnecting}
-                 className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-purple-200 rounded-xl transition-all duration-300 ${
+                 className={`w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-blue-200 rounded-xl transition-all duration-300 ${
                    connectingMethod === 'thirdweb-email' || isConnecting
                      ? 'opacity-50 cursor-not-allowed'
-                     : 'hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-md'
+                     : 'hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-md'
                  }`}
                >
                {connectingMethod === 'thirdweb-email' || isConnecting ? (
                  <>
-                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                    <span className="font-medium text-gray-700">Creando...</span>
                  </>
                ) : (
                  <>
-                   <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                   <div className="w-6 h-6 bg-gradient-to-r from-morpho-blue to-morpho-dark-blue rounded-lg flex items-center justify-center">
                      <svg className="w-4 h-4 text-white" viewBox="0 0 24 24">
                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -289,7 +289,7 @@ export default function Login() {
                      </svg>
                    </div>
                    <span className="font-medium text-gray-700">Conectar con Google</span>
-                   <div className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">ThirdWeb</div>
+                   <div className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">ThirdWeb</div>
                  </>
                )}
              </button>

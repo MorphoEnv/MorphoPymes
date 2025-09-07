@@ -182,7 +182,7 @@ export default function Invest() {
                       </div>
                     )}
                     {project.sponsored && (
-                      <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                      <div className="bg-gradient-to-r from-morpho-blue to-morpho-dark-blue text-white px-3 py-1 rounded-full text-xs font-semibold">
                         Patrocinado
                       </div>
                     )}

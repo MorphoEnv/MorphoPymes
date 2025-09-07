@@ -120,7 +120,7 @@ export default function FinancePage() {
             
             <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-4">
               My Investment{' '}
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Portfolio</span>
+              <span className="bg-gradient-to-r from-morpho-blue to-morpho-dark-blue bg-clip-text text-transparent">Portfolio</span>
             </h1>
             
             <p className="text-gray-600 leading-relaxed max-w-2xl mx-auto">

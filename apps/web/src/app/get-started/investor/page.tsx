@@ -99,7 +99,7 @@ export default function InvestorGetStarted() {
                           </>
                         ) : (
                           <>
-                            <div className="w-5 h-5 bg-orange-500 rounded mr-3"></div>
+                            <div className="w-5 h-5 bg-blue-500 rounded mr-3"></div>
                             Connect MetaMask
                           </>
                         )}
@@ -114,8 +114,8 @@ export default function InvestorGetStarted() {
                     )}
                   </div>
                 </div>
-                <div className="w-24 h-24 bg-orange-500/10 rounded-2xl flex items-center justify-center">
-                  <div className="w-12 h-12 bg-orange-500 rounded-xl"></div>
+                <div className="w-24 h-24 bg-blue-500/10 rounded-2xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-blue-500 rounded-xl"></div>
                 </div>
               </div>
             </div>

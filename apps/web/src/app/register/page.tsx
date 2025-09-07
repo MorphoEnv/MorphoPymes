@@ -106,7 +106,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-morpho-dark-blue via-blue-900 to-morpho-blue">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
@@ -235,7 +235,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-all duration-200"
+                className="w-full py-3 px-4 bg-gradient-to-r from-morpho-blue to-morpho-dark-blue hover:from-blue-600 hover:to-blue-800 disabled:opacity-50 text-white font-medium rounded-lg transition-all duration-200"
               >
                 {isLoading ? 'Registrando...' : 'Crear Cuenta'}
               </button>
@@ -259,7 +259,7 @@ export default function RegisterPage() {
           <div className="text-center mt-6">
             <p className="text-gray-400 text-sm">
               ¿Ya tienes cuenta?{' '}
-              <a href="/login" className="text-purple-400 hover:text-purple-300">
+              <a href="/login" className="text-blue-400 hover:text-blue-300">
                 Inicia sesión
               </a>
             </p>

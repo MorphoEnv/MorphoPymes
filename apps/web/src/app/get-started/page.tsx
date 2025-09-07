@@ -191,7 +191,7 @@ export default function GetStarted() {
             </div>
             
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-blue-100">
-              <div className="w-12 h-12 bg-orange-500 rounded-xl mx-auto mb-4 flex items-center justify-center">
+              <div className="w-12 h-12 bg-blue-500 rounded-xl mx-auto mb-4 flex items-center justify-center">
                 <div className="w-6 h-6 bg-white rounded-full"></div>
               </div>
               <h3 className="font-bold text-gray-900 mb-2">MetaMask</h3>
