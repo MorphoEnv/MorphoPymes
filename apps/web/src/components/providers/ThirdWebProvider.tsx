@@ -4,8 +4,10 @@ import { ThirdwebProvider } from 'thirdweb/react';
 import { createThirdwebClient } from 'thirdweb';
 
 // Cliente ThirdWeb (necesario para v5)
+const clientId = process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID || '3fb238b2e45cfe057ff5609ef406b378';
+
 const client = createThirdwebClient({ 
-  clientId: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID || '3fb238b2e45cfe057ff5609ef406b378'
+  clientId: clientId
 });
 
 export default function ThirdWebProviderWrapper({

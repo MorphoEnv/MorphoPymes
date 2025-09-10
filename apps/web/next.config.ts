@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
         port: '9000',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'storage.morphopymes.lat',
+        pathname: '/**',
+      },
     ],
   },
   eslint: { ignoreDuringBuilds: true },

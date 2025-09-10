@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { apiService } from '@/services/apiService';
 
 // Projects state (fetched from API)
@@ -13,6 +14,8 @@ const defaultProjects: any[] = [];
 const defaultCategories: string[] = ['All'];
 
 export default function Invest() {
+  const router = useRouter();
+  
   // selectedCategory will hold the raw value ('' for All)
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   // categories are objects with { label, value }
@@ -164,9 +167,13 @@ export default function Invest() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
-              <div key={project.id} className={`bg-white/90 backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl border border-blue-200/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group ${
-                project.featured ? 'ring-2 ring-blue-300/50' : ''
-              }`}>
+              <div 
+                key={project.id} 
+                className={`bg-white/90 backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl border border-blue-200/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group cursor-pointer hover:border-blue-300/70 ${
+                  project.featured ? 'ring-2 ring-blue-300/50' : ''
+                }`}
+                onClick={() => router.push(`/invest/${project.id}`)}
+              >
                 {/* Project Image */}
                 <div className="relative h-48 overflow-hidden">
                   <Image
@@ -278,6 +285,7 @@ export default function Invest() {
                   <Link
                     href={`/invest/${project.id}`}
                     className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold text-sm hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2 group"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <span>View Details</span>
                     <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

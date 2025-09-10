@@ -40,7 +40,7 @@ export const BLOCKCHAIN_CONFIG = {
   SUPPORTED_WALLETS: ["metamask", "walletconnect", "coinbase"] as const,
 
   // Thirdweb client id (public) - safe to expose
-  CLIENT_ID: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID || '',
+  CLIENT_ID: process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID || '3fb238b2e45cfe057ff5609ef406b378',
 } as const;
 
 export type SupportedWallet = typeof BLOCKCHAIN_CONFIG.SUPPORTED_WALLETS[number];
